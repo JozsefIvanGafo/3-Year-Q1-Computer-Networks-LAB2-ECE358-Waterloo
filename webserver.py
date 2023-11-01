@@ -6,42 +6,65 @@ serverPort = 11000
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.bind((serverIP, serverPort))
 serverSocket.listen(1)
+
 print("The server is ready to receive")
+
 while (True):
+    
     connectionSocket, addr = serverSocket.accept()
     sentence = connectionSocket.recv(2048).decode()
-    print ("sentence received")
-    list_sentence=sentence.split()
-    # print(list_sentence)
-    print(sentence)
-    type_request=list_sentence[0]
-    file_name=list_sentence[1][1:]
-    
-    if type_request=="GET":
-        try:
-            print("THIS IS THE FILE NAME"+file_name)
-            with open(file_name, "rb") as file:
-                # FIXME: chat gpt
-                file_content = file.read()
-                # Generate the current date and time
-                date = datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
-                last_modification = datetime.datetime.fromtimestamp(os.path.getmtime(file_name)).strftime('%a, %d %b %Y %H:%M:%S GMT')
-                # file_type = os.get_file_type(file_name)
 
-                response = "HTTP/1.1 200 OK\r\n"
-                response += "Connection: Keep-Alive\r\n"# FIXME: NO ESTOY SEGURA
-                response += "Date: " + date +"\r\n"
-                response += "Last-Modified: " + last_modification + "\r\n"
-                response += "Server: \r\n" #FIXME: NOSE CUAL SERÍA EL SERVER
-                response += "Content-Length: " + str(len(file_content)) + "\r\n"
-                response += "Content-Type: text/html\r\n" #FIXME: PODEMOS PONER TEXT/HTML PORQUE SABEMOS QUE EN ESTE CASO SIEMPRE VA A SER ESO?
-                response += "\r\n"
-                final_response = response.encode() + file_content
+    #In case we receive an empty request we just ignore it -
+    print("Sentence Received")
+    if sentence=="":
+        connectionSocket.close()
+    list_sentence = sentence.split()
+    type_request = list_sentence[0]
+    file_name = list_sentence[1][1:]
+    if type_request == "HEAD" or type_request == "GET":
 
-        except FileNotFoundError:
-            final_response = "HTTP/1.1 404 Not Found\r\n\r\nFile not found."
-        connectionSocket.send(final_response)
-
-    # elif type_request=="HEAD":
+        # Generate the current date and time
+        date = "Date: " + datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
+        last_modification = "Last-Modified: " +  datetime.datetime.fromtimestamp(
+            os.path.getmtime(file_name)).strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
+        server="Server: Python\r\n" # TODO: QUESTION ¿NAME?
         
+        try:
+            # We open the file name
+            with open(file_name, "rb") as file:
+
+                file_content = file.read()
+                
+                response = "HTTP/1.1 200 OK\r\n"
+                response += "Connection: Keep-Alive\r\n"  # FIXME: miss time of keep alive
+                response += date
+                response += server  
+                response += last_modification
+                response += "Content-Length: " + \
+                    str(len(file_content)) + "\r\n"
+                # FIXME: PODEMOS PONER TEXT/HTML PORQUE SABEMOS QUE EN ESTE CASO SIEMPRE VA A SER ESO?
+                response += "Content-Type: text/html\r\n"
+                response += "\r\n"
+
+                if type_request == "GET":
+                    final_response = response.encode() + file_content
+                # type_request==Head
+                else:
+                    final_response = response.encode()
+                    
+
+                print(final_response)#TODO: ELIMINAR AL FIN
+        
+        except FileNotFoundError:
+            # File not found send error code
+            response = "HTTP/1.1 404 Not Found\r\n"# FIXME: QUESTION: ¿RIGHT FORMAT?
+            response+=date
+            response+=server
+            final_response = response.encode()
+    
+        connectionSocket.send(final_response)
     connectionSocket.close()
+
+    
+#TODO: test other methods such as PUT
+#TODO: check nested folders or directories
