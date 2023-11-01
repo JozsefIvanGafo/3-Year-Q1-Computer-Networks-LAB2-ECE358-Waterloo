@@ -10,13 +10,13 @@ serverSocket.listen(1)
 print("The server is ready to receive")
 
 while (True):
-    
-    connectionSocket, addr = serverSocket.accept()
+
+    connectionSocket = serverSocket.accept()[0]
     sentence = connectionSocket.recv(2048).decode()
 
-    #In case we receive an empty request we just ignore it -
+    # In case we receive an empty request we just ignore it -
     print("Sentence Received")
-    if sentence=="":
+    if sentence == "":
         connectionSocket.close()
     list_sentence = sentence.split()
     type_request = list_sentence[0]
@@ -25,20 +25,20 @@ while (True):
 
         # Generate the current date and time
         date = "Date: " + datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
-        last_modification = "Last-Modified: " +  datetime.datetime.fromtimestamp(
+        last_modification = "Last-Modified: " + datetime.datetime.fromtimestamp(
             os.path.getmtime(file_name)).strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
-        server="Server: Python\r\n" # TODO: QUESTION ¿NAME?
-        
+        server = "Server: Python\r\n"  # TODO: QUESTION ¿NAME?
+
         try:
             # We open the file name
             with open(file_name, "rb") as file:
 
                 file_content = file.read()
-                
+
                 response = "HTTP/1.1 200 OK\r\n"
                 response += "Connection: Keep-Alive\r\n"  # FIXME: miss time of keep alive
                 response += date
-                response += server  
+                response += server
                 response += last_modification
                 response += "Content-Length: " + \
                     str(len(file_content)) + "\r\n"
@@ -51,20 +51,19 @@ while (True):
                 # type_request==Head
                 else:
                     final_response = response.encode()
-                    
 
-                print(final_response)#TODO: ELIMINAR AL FIN
-        
+                print(final_response)  # TODO: ELIMINAR AL FIN
+
         except FileNotFoundError:
             # File not found send error code
-            response = "HTTP/1.1 404 Not Found\r\n"# FIXME: QUESTION: ¿RIGHT FORMAT?
-            response+=date
-            response+=server
+            response = "HTTP/1.1 404 Not Found\r\n"  # FIXME: QUESTION: ¿RIGHT FORMAT?
+            response += date
+            response += server
             final_response = response.encode()
-    
+
         connectionSocket.send(final_response)
     connectionSocket.close()
 
-    
-#TODO: test other methods such as PUT
-#TODO: check nested folders or directories
+
+# TODO: test other methods such as PUT
+# TODO: check nested folders or directories
