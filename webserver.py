@@ -6,9 +6,9 @@ V 1:0
 Description: In this module we will write the code for the webserver for the task 1 of lab 2
 """
 #We define the imports
-from socket import *
 import datetime
 import os
+from socket import *
 
 
 class WebServer:
@@ -62,7 +62,7 @@ class WebServer:
 
             #If we didn't find the file we send http error response
             except FileNotFoundError:
-                print("file not found")
+                print("[ERROR] File not found")
                 response=self.__http_error_response()
 
             #If we encounter another type of error
@@ -72,6 +72,7 @@ class WebServer:
                 continue
 
             print("sending response")
+            print(response)
             #We send the response
             connectionSocket.send(response.encode())
             #We close connection with client
@@ -101,7 +102,7 @@ class WebServer:
 
         #IF is type HEAD then we only return the headers
         if type_request=="HEAD":
-            return response
+            return response+"\r\n"
         #If is type get we return all headers + file content
         return response+"\r\n"+file_content.decode()
         
@@ -111,10 +112,9 @@ class WebServer:
         Description: This method is in charge of returning the error response
         @return: it returns a string congaing the headers of the status code 404 Not found 
         """
+        #TODO: Correct 404 error
         status="HTTP/1.1 404 Not Found\r\n"
-        date=self.__get_date_header()
-        server=self.__get_server_header()
-        return status+date+server
+        return status
 
 
 
@@ -148,7 +148,7 @@ class WebServer:
         """
         Description: returns the web server software being used header
         """
-        return "Server: Python\r\n"
+        return "Server: Webserver\r\n"
     
     @staticmethod
     def __get_connection_header()->str:

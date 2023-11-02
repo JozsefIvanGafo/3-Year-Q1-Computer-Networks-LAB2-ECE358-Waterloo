@@ -27,7 +27,7 @@ while (True):
         date = "Date: " + datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
         last_modification = "Last-Modified: " + datetime.datetime.fromtimestamp(
             os.path.getmtime(file_name)).strftime('%a, %d %b %Y %H:%M:%S GMT') + "\r\n"
-        server = "Server: Python\r\n"  # TODO: QUESTION ¿NAME?
+        server = "Server: webserver\r\n"  # TODO: QUESTION ¿NAME?
 
         try:
             # We open the file name
@@ -56,7 +56,7 @@ while (True):
 
         except FileNotFoundError:
             # File not found send error code
-            response = "HTTP/1.1 404 Not Found\r\n"  # FIXME: QUESTION: ¿RIGHT FORMAT?
+            response = "404 Not Found\r\n"  # FIXME: QUESTION: ¿RIGHT FORMAT?
             response += date
             response += server
             final_response = response.encode()
