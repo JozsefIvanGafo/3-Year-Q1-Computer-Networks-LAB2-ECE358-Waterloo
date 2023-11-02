@@ -51,7 +51,8 @@ class Server:
 
             #TODO: print in hexadecimal with colours for the dns_response
 
-
+            #67 6f 6f 67 6c 65 2e 63 6f 6d
+            #67 6f 6f 67 6c 65 03 63 6f 6d
 
 
             #Send answer
@@ -146,7 +147,7 @@ class Server:
         return self.bits_to_bytes(flags)
     
 
-    
+
     #static methods
     @staticmethod
     def int_to_bytes(number:int,byte_size:int)->bytes:

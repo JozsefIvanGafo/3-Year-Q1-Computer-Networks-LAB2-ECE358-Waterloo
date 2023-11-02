@@ -69,7 +69,7 @@ class Client:
         This method is in charge of generating the dns query
         """
         #Revise qname to bytes
-        qname=bytes(domain,"utf-8")
+        qname=domain.encode()
         qtype=self.int_to_bytes(1,2)
         qclass=self.int_to_bytes(1,2)
 
