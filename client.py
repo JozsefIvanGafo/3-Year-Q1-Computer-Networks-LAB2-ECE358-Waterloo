@@ -7,11 +7,13 @@ clientSocket.connect((serverIP, serverPort))
 
 type_request = input("Introduce file:")
 if type_request == "h":
-    http_request_type="HEAD /prueba/HelloWorld.html\r\n"
+    http_request_type="HEAD \prueba\HelloWorld.html\r\n"
 elif type_request == "g":
-    http_request_type="GET /prueba/HelloWorld.html\r\n"
+    http_request_type="GET \prueba\HelloWorld.html\r\n"
+elif type_request=="p":
+    http_request_type="PUT \prueba\HelloWorld.html\r\n"
 else:
-    http_request_type="PUT /prueba/HelloWorld.html\r\n"
+    http_request_type=" "
     
 
 clientSocket.send(http_request_type.encode())
