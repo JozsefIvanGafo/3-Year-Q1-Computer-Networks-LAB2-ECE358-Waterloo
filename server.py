@@ -81,7 +81,6 @@ class Server:
         rdlength=str(len(rdata))
         return name+type_+class_+ttl+rdlength+rdata
     
-
     def find_domain(self,domain)->dict|None:
         """
         This method is in charge of finding the domain and 
@@ -95,8 +94,6 @@ class Server:
             print(f"[ERROR]: domain not found {error}")
             return 
     
-
-    #Functions to create the request headers + data
     def __dns_header(self)->bytes:
         """
         This method is in charge of generating the header of the dns
@@ -149,7 +146,7 @@ class Server:
         return self.bits_to_bytes(flags)
     
 
-
+    
     #static methods
     @staticmethod
     def int_to_bytes(number:int,byte_size:int)->bytes:
