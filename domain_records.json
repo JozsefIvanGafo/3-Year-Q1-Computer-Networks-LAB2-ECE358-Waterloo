@@ -1,0 +1,32 @@
+{
+    "google.com": {
+        "Type": "A",
+        "Class": "IN",
+        "TTL": 260,
+        "IP": ["192.165.1.1", "192.165.1.10"]
+    },
+    "youtube.com": {
+        "Type": "A",
+        "Class": "IN",
+        "TTL": 160,
+        "IP": ["192.165.1.2"]
+    },
+    "uwaterloo.ca": {
+        "Type": "A",
+        "Class": "IN",
+        "TTL": 160,
+        "IP": ["192.165.1.3"]
+    },
+    "wikipedia.org": {
+        "Type": "A",
+        "Class": "IN",
+        "TTL": 160,
+        "IP": ["192.165.1.4"]
+    },
+    "amazon.ca": {
+        "Type": "A",
+        "Class": "IN",
+        "TTL": 160,
+        "IP": ["192.165.1.5"]
+    }
+}

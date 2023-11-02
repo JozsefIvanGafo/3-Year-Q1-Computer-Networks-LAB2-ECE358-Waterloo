@@ -1,9 +1,8 @@
 #imports
-from socket import *
 import random
+from socket import *
 
 #Create class
-
 class Client:
     def __init__(self,server_ip:str,server_port:int) -> None:
         self.__server_ip=server_ip
@@ -42,6 +41,7 @@ class Client:
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
 
     
+    #Functions to create the request headers + data
     def __dns_header(self)->bytes:
         """
         This method is in charge of generating the header of the dns
@@ -55,12 +55,12 @@ class Client:
 
         #We generate the other headers
         qdcount=self.int_to_bytes(1,2)#number of entries in question section
-        
+
         #Based on message type
         ancount=self.int_to_bytes(0,2)#number of resource records in answer section
 
         nscount=self.int_to_bytes(0,2)#number of name server resource records in authorative records
-        arcount=self.int_to_bytes(0,2)#number of resource records addtional record section
+        arcount=self.int_to_bytes(0,2)#number of resource records additional record section
 
         return dns_id+flags+qdcount+ancount+nscount+arcount
 
@@ -117,15 +117,13 @@ class Client:
         @return bytes: We return the conversion of bits to bytes
         """
         if len(bits)%8!=0:
-            raise ValueError("[Error] It bit length must be multiple of 8")
+            raise ValueError("[Error] The bit length must be multiple of 8")
+        
         #We divide the bits by chunks of 8
         byte_chunks=[bits[i:i+8] for i in range(0, len(bits), 8)]
 
         result_in_bytes = bytes([int(chunk, 2) for chunk in byte_chunks])
         return result_in_bytes
-
-
-
 
 
 
