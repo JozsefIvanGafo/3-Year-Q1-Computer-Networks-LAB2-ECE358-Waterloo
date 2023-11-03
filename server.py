@@ -9,6 +9,7 @@ class Server:
     def __init__(self,serverIP:str,serverPort:int) -> None:
         self.__server_ip=serverIP
         self.__server_port=serverPort
+        self.__debug=False
         #We load the domain records
         with open("domain_records.json","r") as json_file:
             self.__domain_records=json.load(json_file)
@@ -26,23 +27,31 @@ class Server:
             #Wait until we receive a request
             message, clientAddress = self.__server_socket.recvfrom(2048)
 
+            # ! Extract data
+            hex_message=message.hex()
+            #
+            request=self.extract_data_of_request(hex_message)
+            print("the request is:")
+            print(request)
+            print("The domain is :",end=" ")
+            #Convert it from hex to bytes to the convert it to string
+            domain=bytes.fromhex(request["qname"]).decode()
+            print(domain)
+
+
 
             #TODO: print in hexadecimal with colours for the message
             #Convert the message to hexadecimal
-            # hex_message=message.hex()
-            message_hex=message.hex()
-            #print(message_hex)
-            groups = [message_hex[i:i+2] for i in range(0, len(message_hex), 2)]
+            # # hex_message=message.hex()
+            # message_hex=message.hex()
+            # #print(message_hex)
+            # groups = [message_hex[i:i+2] for i in range(0, len(message_hex), 2)]
 
-            for pair in groups:
-                print(pair, end=" ")
+            # for pair in groups:
+            #     print(pair, end=" ")
             
 
-            #TODO:Extract domain from message
-            domain="google.com"
-
-
-
+        
             #Create structure of the dns answer
             dns_header=self.__dns_header()
             dns_answer=self.__generate_answer_header(domain)
@@ -146,6 +155,28 @@ class Server:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
     
+    def extract_data_of_request(self,hex_data:hex)->dict:
+        """
+        This method is in charge of extracting all the 
+        components of the request made by the client
+        @hex_data: the request in hexadecimals numbers
+        @return: a dictionary containing all components of the request
+        """
+
+        dictionary={
+            "id_req":hex_data[:4],
+            "flags_req":hex_data[4:8],
+            "qdcount":hex_data[8:12],
+            "ancount":hex_data[12:16],
+            "nscount":hex_data[16:20],
+            "arcount":hex_data[20:24],
+            "qname":hex_data[24:-8],#We know it will always be -8
+            "qtype":hex_data[-8:-4],
+            "qclass":hex_data[-4:]
+        }
+        return dictionary
+
+
 
 
     #static methods
