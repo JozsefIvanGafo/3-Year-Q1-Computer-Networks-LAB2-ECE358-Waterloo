@@ -18,6 +18,27 @@ class Server:
         self.__server_socket=socket(AF_INET, SOCK_DGRAM)
         self.__server_socket.bind((self.__server_ip,self.__server_port))
 
+
+        #Coulours
+        self.__colours= [
+                        "\033[31m",  # Red
+                        "\033[32m",  # Green
+                        "\033[33m",  # Yellow
+                        "\033[34m",  # Blue
+                        "\033[35m",  # Magenta
+                        "\033[36m",  # Cyan
+                        "\033[91m",  # Light Red
+                        "\033[92m",  # Light Green
+                        "\033[93m",  # Light Yellow
+                        "\033[94m",  # Light Blue
+                        "\033[95m",  # Light Magenta
+                        "\033[96m",  # Light Cyan
+                        "\033[97m",  # Light Gray
+                        "\033[90m",  # Dark Gray
+                        "\033[37m",  # Default
+                        ]
+        self.__reset = "\033[0m"  # Reset text color to default
+
         print("The server is ready to receive")
         
 
@@ -29,18 +50,15 @@ class Server:
 
             # ! Extract data
             hex_message=message.hex()
-            #
+            # ! We  extracted the data on a dictionary
             request=self.extract_data_of_request(hex_message)
-            print("the request is:")
-            print(request)
-            print("The domain is :",end=" ")
-            #Convert it from hex to bytes to the convert it to string
-            domain=bytes.fromhex(request["qname"]).decode()
-            print(domain)
-
 
 
             #TODO: print in hexadecimal with colours for the message
+            #We iterate all values of the hex
+            self.__print_dict(request)
+
+
             #Convert the message to hexadecimal
             # # hex_message=message.hex()
             # message_hex=message.hex()
@@ -51,14 +69,21 @@ class Server:
             #     print(pair, end=" ")
             
 
-        
+            #TODO: generate header for answering the question
+            #Obtain the domain
+            #Convert it from hex to bytes to then convert it to string
+            domain=bytes.fromhex(request["qname"]).decode()
+            #print(domain)
+
             #Create structure of the dns answer
             dns_header=self.__dns_header()
             dns_answer=self.__generate_answer_header(domain)
             dns_response=dns_header+dns_answer
+            
             print(dns_response)
 
             #TODO: print in hexadecimal with colours for the dns_response
+            
 
             #67 6f 6f 67 6c 65 2e 63 6f 6d
             #67 6f 6f 67 6c 65 03 63 6f 6d
@@ -69,6 +94,8 @@ class Server:
             # modifiedMessage = dns_response.decode().upper()
             #serverSocket.sendto(modifiedMessage.encode(),clientAddress)
             self.__server_socket.close()
+
+    
 
 
 
@@ -176,7 +203,16 @@ class Server:
         }
         return dictionary
 
-
+    #coloured prints for a list
+    def __print_dict(self, request:dict)->None:
+        for i, (_,value) in enumerate(request.items()):
+                #We group hexadecimals by 2 
+            for j,hex_value in enumerate(value):
+                    #Space between them every 2 hex numbers
+                if j%2==0:
+                    print(" ",end="")
+                    #We add the colours formula = colour+ text + reset_colour
+                print(self.__colours[i]+hex_value+self.__reset,end="")
 
 
     #static methods
