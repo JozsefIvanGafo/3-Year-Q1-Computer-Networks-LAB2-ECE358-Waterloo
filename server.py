@@ -6,10 +6,10 @@ from socket import *
 #Create class Server
 class Server:
 
-    def __init__(self,serverIP:str,serverPort:int) -> None:
+    def __init__(self,serverIP:str,serverPort:int,debug:bool=False) -> None:
         self.__server_ip=serverIP
         self.__server_port=serverPort
-        self.__debug=True
+        self.__debug=debug
         #We load the domain records
         with open("domain_records.json","r") as json_file:
             self.__domain_records=json.load(json_file)
@@ -54,17 +54,14 @@ class Server:
             request=self.extract_data_of_request(hex_message)
 
 
-            #TODO: print in hexadecimal with colours for the message
-            #We iterate all values of the hex
+            #We iterate all values of the hex and we print them with colours depending of the type of header
             print("Request:")
             self.__print_req(request)
             print("")
 
 
 
-            
-
-            #TODO: generate header for answering the question
+        
             #Obtain the domain
             #Convert it from hex to bytes to then convert it to string
             domain=bytes.fromhex(request["qname"]).decode()
@@ -72,6 +69,7 @@ class Server:
             #print(domain)
 
             #Create structure of the dns answer
+            #TODO: Refactor
             dns_answer=self.__generate_answer_header(domain)
             if dns_answer!=None:
                 dns_header=self.__dns_header(transaction_id,1)#already in bytes
@@ -107,8 +105,7 @@ class Server:
         if aux==None:
             return
         
-        
-        #TODO: convert it into bytes
+        #TODO: Refactor
         name =self.int_to_bytes(204,4) #c0 0c (hex)=204 (dec)#aux.get("Type")
 
 
@@ -281,5 +278,6 @@ class Server:
 if __name__=="__main__":
     serverIP = "127.0.0.1"
     serverPort = 12000
-    server=Server(serverIP,serverPort)
+    debug=False
+    server=Server(serverIP,serverPort,debug)
     server.initialize()
