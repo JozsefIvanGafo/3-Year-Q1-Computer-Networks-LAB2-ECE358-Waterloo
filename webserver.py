@@ -114,7 +114,10 @@ class WebServer:
         """
         #TODO: Correct 404 error
         status="HTTP/1.1 404 Not Found\r\n"
-        return status
+        date=self.__get_date_header()
+        server=self.__get_server_header()
+        content_length=self.__get_content_length_header(b"")
+        return status+date+server+content_length
 
 
 

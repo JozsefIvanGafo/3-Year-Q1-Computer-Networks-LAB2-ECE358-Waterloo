@@ -39,7 +39,7 @@ class Client:
 
             #Send request to the server
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
-
+            self.__client_socket.recvfrom(2048)
     
     #Functions to create the request headers + data
     def __dns_header(self)->bytes:

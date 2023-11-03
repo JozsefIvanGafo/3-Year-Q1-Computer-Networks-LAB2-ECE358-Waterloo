@@ -9,7 +9,7 @@ class Server:
     def __init__(self,serverIP:str,serverPort:int) -> None:
         self.__server_ip=serverIP
         self.__server_port=serverPort
-        self.__debug=False
+        self.__debug=True
         #We load the domain records
         with open("domain_records.json","r") as json_file:
             self.__domain_records=json.load(json_file)
@@ -78,14 +78,14 @@ class Server:
             #print(domain)
 
             #Create structure of the dns answer
-            dns_header=self.__dns_header()
+            dns_header=self.__dns_header()#already in bytes
             dns_answer=self.__generate_answer_header(domain)
             dns_response=dns_header+dns_answer
             
             print(dns_response)
 
             #TODO: print in hexadecimal with colours for the dns_response
-            self.__print_ans("")
+            self.__print_ans(dns_response)
 
             #67 6f 6f 67 6c 65 2e 63 6f 6d
             #67 6f 6f 67 6c 65 03 63 6f 6d
@@ -107,18 +107,48 @@ class Server:
         Method is in charge of creating the answer header
         @return: Returns bytes if there is a domain found else it returns None
         """
+        print(domain)
         aux = self.find_domain(domain)
         if aux==None:
             return
         
         #TODO: convert it into bytes
-        name = aux.get("Type")
+        name =self.int_to_bytes(204,4) #c0 0c (hex)=204 (dec)#aux.get("Type")
+
+
         type_= aux.get("Type")
+        print(type_)
+        type_code=b""
+        if type_=="A":
+            type_code==self.int_to_bytes(1,2)#1=type A
+        else:
+            raise ValueError("[ERROR] we only accept type A for this lab")
         class_= aux.get("Class")
-        ttl= aux.get("TTL")
-        rdata=aux.get("IP")
-        rdlength=str(len(rdata))
-        return name+type_+class_+ttl+rdlength+rdata
+        if class_=="IN":
+            class_=self.int_to_bytes(1,2)#1=class IN(internet)
+
+
+        ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
+
+
+
+        list_ip=aux.get("IP")
+        rdata=b""
+        for ip in list_ip:
+            rdata+=ip.encode()
+
+        rdlength=self.int_to_bytes(len(rdata),2)
+
+
+        if self.__debug:
+            print(type(name))
+            print(type(type_code))
+            print(type(class_))
+            print(type(ttl))
+            print(type(rdata))
+            print(type(rdlength))
+
+        return name+type_code+class_+ttl+rdlength+rdata
     
     
     def find_domain(self,domain)->dict|None:
@@ -174,6 +204,8 @@ class Server:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
     
+
+    #MEthod to extract data of a request
     def extract_data_of_request(self,hex_data:hex)->dict:
         """
         This method is in charge of extracting all the 
