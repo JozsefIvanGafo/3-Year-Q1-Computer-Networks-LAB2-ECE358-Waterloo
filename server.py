@@ -61,27 +61,23 @@ class Server:
             print("")
 
 
-            #Convert the message to hexadecimal
-            # # hex_message=message.hex()
-            # message_hex=message.hex()
-            # #print(message_hex)
-            # groups = [message_hex[i:i+2] for i in range(0, len(message_hex), 2)]
 
-            # for pair in groups:
-            #     print(pair, end=" ")
             
 
             #TODO: generate header for answering the question
             #Obtain the domain
             #Convert it from hex to bytes to then convert it to string
             domain=bytes.fromhex(request["qname"]).decode()
+            transaction_id=bytes.fromhex(request["id_req"])
             #print(domain)
 
             #Create structure of the dns answer
-            dns_header=self.__dns_header()#already in bytes
             dns_answer=self.__generate_answer_header(domain)
-            dns_response=dns_header+dns_answer
-            
+            if dns_answer!=None:
+                dns_header=self.__dns_header(transaction_id,1)#already in bytes
+                dns_response=dns_header+dns_answer
+            else:
+                dns_response=self.__dns_header(transaction_id,0)
             print(dns_response)
 
             #TODO: print in hexadecimal with colours for the dns_response
@@ -94,8 +90,8 @@ class Server:
             #Send answer
             # print(dns_response)
             # modifiedMessage = dns_response.decode().upper()
-            #serverSocket.sendto(modifiedMessage.encode(),clientAddress)
-            self.__server_socket.close()
+            self.__server_socket.sendto(dns_response,clientAddress)
+            #self.__server_socket.close()
 
     
 
@@ -107,20 +103,19 @@ class Server:
         Method is in charge of creating the answer header
         @return: Returns bytes if there is a domain found else it returns None
         """
-        print(domain)
         aux = self.find_domain(domain)
         if aux==None:
             return
+        
         
         #TODO: convert it into bytes
         name =self.int_to_bytes(204,4) #c0 0c (hex)=204 (dec)#aux.get("Type")
 
 
         type_= aux.get("Type")
-        print(type_)
         type_code=b""
         if type_=="A":
-            type_code==self.int_to_bytes(1,2)#1=type A
+            type_code=self.int_to_bytes(1,2)#1=type A
         else:
             raise ValueError("[ERROR] we only accept type A for this lab")
         class_= aux.get("Class")
@@ -131,11 +126,11 @@ class Server:
         ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
 
 
-
         list_ip=aux.get("IP")
         rdata=b""
         for ip in list_ip:
             rdata+=ip.encode()
+        
 
         rdlength=self.int_to_bytes(len(rdata),2)
 
@@ -164,16 +159,17 @@ class Server:
             print(f"[ERROR]: domain not found {error}")
             return 
     
-    def __dns_header(self)->bytes:
+    def __dns_header(self,transaction_id:bytes,found:bool)->bytes:
         """
         This method is in charge of generating the header of the dns
+        @transaction_id: is the id of the request
+        @found:it tells us if we found dns answer
         """
         #We generate the ID
-        random_id=random.randint(0,2**16-1)
-        dns_id=self.int_to_bytes(random_id,2)
+        dns_id=transaction_id
 
         #We generate the flag header
-        flags = self.generate_flags()
+        flags = self.generate_flags(found)
 
         #We generate the other headers
         qdcount=self.int_to_bytes(1,2)#number of entries in question section
@@ -186,7 +182,7 @@ class Server:
 
         return dns_id+flags+qdcount+ancount+nscount+arcount
  
-    def generate_flags(self)->bytes:
+    def generate_flags(self,found:bool)->bytes:
         """
         We generate the flag header
         """
@@ -197,7 +193,12 @@ class Server:
         rd = "0"    #recursion desired
         ra = "0"    #recursion avaible
         z = "000"   #for future use
-        rcode ="0000"  #Response code
+        #If we found an ip address then is 0 (no error)
+        if found:
+            rcode ="0000"  #Response code
+        #The name reference in the query does not exist( code 3)
+        else:
+            rcode="0011"
 
         flags=qr+opcode+aa+tc+rd+ra+z+rcode
 
