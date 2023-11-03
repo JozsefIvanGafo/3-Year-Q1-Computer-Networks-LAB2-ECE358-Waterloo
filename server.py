@@ -56,7 +56,9 @@ class Server:
 
             #TODO: print in hexadecimal with colours for the message
             #We iterate all values of the hex
-            self.__print_dict(request)
+            print("Request:")
+            self.__print_req(request)
+            print("")
 
 
             #Convert the message to hexadecimal
@@ -83,7 +85,7 @@ class Server:
             print(dns_response)
 
             #TODO: print in hexadecimal with colours for the dns_response
-            
+            self.__print_ans("")
 
             #67 6f 6f 67 6c 65 2e 63 6f 6d
             #67 6f 6f 67 6c 65 03 63 6f 6d
@@ -117,6 +119,7 @@ class Server:
         rdata=aux.get("IP")
         rdlength=str(len(rdata))
         return name+type_+class_+ttl+rdlength+rdata
+    
     
     def find_domain(self,domain)->dict|None:
         """
@@ -152,17 +155,6 @@ class Server:
         arcount=self.int_to_bytes(0,2)#number of resource records additional record section
 
         return dns_id+flags+qdcount+ancount+nscount+arcount
-
-    def __dns_query(self,domain:str)->bytes:
-        """
-        This method is in charge of generating the dns query
-        """
-        #Revise qname to bytes
-        qname=bytes(domain,"utf-8")
-        qtype=self.int_to_bytes(1,2)
-        qclass=self.int_to_bytes(1,2)
-
-        return qname+qtype+qclass
  
     def generate_flags(self)->bytes:
         """
@@ -203,8 +195,8 @@ class Server:
         }
         return dictionary
 
-    #coloured prints for a list
-    def __print_dict(self, request:dict)->None:
+    #functions to print request and answers
+    def __print_req(self, request:dict)->None:
         for i, (_,value) in enumerate(request.items()):
                 #We group hexadecimals by 2 
             for j,hex_value in enumerate(value):
@@ -214,6 +206,11 @@ class Server:
                     #We add the colours formula = colour+ text + reset_colour
                 print(self.__colours[i]+hex_value+self.__reset,end="")
 
+    def __print_ans(self,data)->None:
+        #TODO: PRint by colours the answers (almost the same as print_req)
+        #TODO: ANother way is to make a dictionary for the 
+        #TODO: answer and would mean not to use this method
+        pass
 
     #static methods
     @staticmethod
