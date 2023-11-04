@@ -128,7 +128,7 @@ class Server:
         for ip in list_ip:
             rdata+=ip.encode()
         
-
+        #TODO: the length must be in bytes
         rdlength=self.int_to_bytes(len(rdata),2)
 
 
