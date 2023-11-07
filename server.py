@@ -11,8 +11,38 @@ class Server:
         self.__server_port=serverPort
         self.__debug=debug
         #We load the domain records
-        with open("domain_records.json","r") as json_file:
-            self.__domain_records=json.load(json_file)
+        self.__domain_records={
+            "google.com": {
+                "Type": "A",
+                "Class": "IN",
+                "TTL": 260,
+                "IP": ["192.165.1.1", "192.165.1.10"]
+            },
+            "youtube.com": {
+                "Type": "A",
+                "Class": "IN",
+                "TTL": 160,
+                "IP": ["192.165.1.2"]
+            },
+            "uwaterloo.ca": {
+                "Type": "A",
+                "Class": "IN",
+                "TTL": 160,
+                "IP": ["192.165.1.3"]
+            },
+            "wikipedia.org": {
+                "Type": "A",
+                "Class": "IN",
+                "TTL": 160,
+                "IP": ["192.165.1.4"]
+            },
+            "amazon.ca": {
+                "Type": "A",
+                "Class": "IN",
+                "TTL": 160,
+                "IP": ["192.165.1.5"]
+            }
+        }
 
         #We create the socket
         self.__server_socket=socket(AF_INET, SOCK_DGRAM)
@@ -96,7 +126,7 @@ class Server:
 
 
     #Methods to generate headers
-    def __generate_answer_header(self,domain)->bytes|None:
+    def __generate_answer_header(self,domain)->bytes:
         """
         Method is in charge of creating the answer header
         @return: Returns bytes if there is a domain found else it returns None
@@ -143,7 +173,7 @@ class Server:
         return name+type_code+class_+ttl+rdlength+rdata
     
     
-    def find_domain(self,domain)->dict|None:
+    def find_domain(self,domain)->dict:
         """
         This method is in charge of finding the domain and 
         returning the dictionary with the different values for that domain
@@ -202,8 +232,7 @@ class Server:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
     
-
-    #MEthod to extract data of a request
+    #Method to extract data of a request
     def extract_data_of_request(self,hex_data:hex)->dict:
         """
         This method is in charge of extracting all the 
@@ -269,9 +298,6 @@ class Server:
 
         result_in_bytes = bytes([int(chunk, 2) for chunk in byte_chunks])
         return result_in_bytes
-
-
-
 
 
 

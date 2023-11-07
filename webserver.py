@@ -116,8 +116,11 @@ class WebServer:
         status="HTTP/1.1 404 Not Found\r\n"
         date=self.__get_date_header()
         server=self.__get_server_header()
-        content_length=self.__get_content_length_header(b"")
-        return status+date+server+content_length
+        message_not_found = "404 Not Found"
+        content_length=self.__get_content_length_header(message_not_found.encode())
+        content_type= "text/plain\r\n"
+        file_content = "\r\n"+ message_not_found+ "\r\n"
+        return status+date+server+content_length + content_type + file_content 
 
 
 

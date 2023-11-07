@@ -8,7 +8,7 @@ class Client:
         self.__server_ip=server_ip
         self.__server_port=server_port
         self.__client_socket=socket(AF_INET, SOCK_DGRAM)
-        self.__debug=False
+        self.__debug=True
 
     def initialize(self):
         """
@@ -47,7 +47,7 @@ class Client:
         This method is in charge of generating the header of the dns
         """
         #We generate the ID
-        random_id=random.randint(0,2**16-1)
+        random_id=random.randint(0,(2**16)-1)
         dns_id=self.int_to_bytes(random_id,2)
 
         #We generate the flag header
@@ -69,13 +69,17 @@ class Client:
         This method is in charge of generating the dns query
         """
         #Revise qname to bytes
-        qname=domain.encode()
+        labels = domain.split(".")
+        qname = b"" # Initialize
+        for label in labels:
+            qname += self.int_to_bytes(len(label),1)
+            qname += label.encode()
+        qname += self.int_to_bytes(0,1) # End of domain
+
         qtype=self.int_to_bytes(1,2)
         qclass=self.int_to_bytes(1,2)
 
         return qname+qtype+qclass
-
-
     
     def generate_flags(self):
         """
@@ -95,8 +99,6 @@ class Client:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
     
-
-
     #static methods
     @staticmethod
     def int_to_bytes(number:int,byte_size:int)->bytes:
