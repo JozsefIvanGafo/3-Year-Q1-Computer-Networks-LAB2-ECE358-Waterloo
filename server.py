@@ -6,7 +6,7 @@ from socket import *
 #Create class Server
 class Server:
 
-    def __init__(self,serverIP:str,serverPort:int,debug:bool=False) -> None:
+    def __init__(self,serverIP:str,serverPort:int,debug:bool=True) -> None:
         self.__server_ip=serverIP
         self.__server_port=serverPort
         self.__debug=debug
@@ -48,27 +48,6 @@ class Server:
         self.__server_socket=socket(AF_INET, SOCK_DGRAM)
         self.__server_socket.bind((self.__server_ip,self.__server_port))
 
-
-        #Coulours
-        self.__colours= [
-                        "\033[31m",  # Red
-                        "\033[32m",  # Green
-                        "\033[33m",  # Yellow
-                        "\033[34m",  # Blue
-                        "\033[35m",  # Magenta
-                        "\033[36m",  # Cyan
-                        "\033[91m",  # Light Red
-                        "\033[92m",  # Light Green
-                        "\033[93m",  # Light Yellow
-                        "\033[94m",  # Light Blue
-                        "\033[95m",  # Light Magenta
-                        "\033[96m",  # Light Cyan
-                        "\033[97m",  # Light Gray
-                        "\033[90m",  # Dark Gray
-                        "\033[37m",  # Default
-                        ]
-        self.__reset = "\033[0m"  # Reset text color to default
-
         print("The server is ready to receive")
         
 
@@ -86,30 +65,29 @@ class Server:
 
             #We iterate all values of the hex and we print them with colours depending of the type of header
             print("Request:")
-            self.__print_req(request)
+            self.print_hex(hex_message)
             print("")
 
-
-
-        
             #Obtain the domain
             #Convert it from hex to bytes to then convert it to string
+
             domain=bytes.fromhex(request["qname"]).decode()
             transaction_id=bytes.fromhex(request["id_req"])
             #print(domain)
 
             #Create structure of the dns answer
             #TODO: Refactor
-            dns_answer=self.__generate_answer_header(domain)
+            domain = self._decode_domain(domain)
+            dns_answer=self.__generate_answer_section(domain)
             if dns_answer!=None:
                 dns_header=self.__dns_header(transaction_id,1)#already in bytes
                 dns_response=dns_header+dns_answer
             else:
                 dns_response=self.__dns_header(transaction_id,0)
-            print(dns_response)
+            # print(dns_response)
 
             #TODO: print in hexadecimal with colours for the dns_response
-            self.__print_ans(dns_response)
+            self.print_hex(dns_response.hex())
 
             #67 6f 6f 67 6c 65 2e 63 6f 6d
             #67 6f 6f 67 6c 65 03 63 6f 6d
@@ -121,12 +99,35 @@ class Server:
             self.__server_socket.sendto(dns_response,clientAddress)
             #self.__server_socket.close()
 
-    
 
 
+    def _decode_domain(self,domain:str)->str:
+        """
+        Method in charge of decoding the domain
+        @domain: The domain we want to decode
+        @return: The decoded domain
+        """
+        real_domain = ""
+        domain_bytes = domain.encode()
+
+        length_1 = domain_bytes[0]
+        for i in range(1, length_1 + 1):
+            real_domain += chr(domain_bytes[i])
+        real_domain += "."
+
+        i = length_1 + 1
+        length_2 = domain_bytes[i]
+        for j in range(1, length_2 + 1):
+            real_domain += chr(domain_bytes[i + j])
+
+        return real_domain
+            
+
+        
+        
 
     #Methods to generate headers
-    def __generate_answer_header(self,domain)->bytes:
+    def __generate_answer_section(self,domain)->bytes:
         """
         Method is in charge of creating the answer header
         @return: Returns bytes if there is a domain found else it returns None
@@ -172,7 +173,7 @@ class Server:
 
         return name+type_code+class_+ttl+rdlength+rdata
     
-    
+
     def find_domain(self,domain)->dict:
         """
         This method is in charge of finding the domain and 
@@ -254,22 +255,6 @@ class Server:
         }
         return dictionary
 
-    #functions to print request and answers
-    def __print_req(self, request:dict)->None:
-        for i, (_,value) in enumerate(request.items()):
-                #We group hexadecimals by 2 
-            for j,hex_value in enumerate(value):
-                    #Space between them every 2 hex numbers
-                if j%2==0:
-                    print(" ",end="")
-                    #We add the colours formula = colour+ text + reset_colour
-                print(self.__colours[i]+hex_value+self.__reset,end="")
-
-    def __print_ans(self,data)->None:
-        #TODO: PRint by colours the answers (almost the same as print_req)
-        #TODO: ANother way is to make a dictionary for the 
-        #TODO: answer and would mean not to use this method
-        pass
 
     #static methods
     @staticmethod
@@ -299,6 +284,13 @@ class Server:
         result_in_bytes = bytes([int(chunk, 2) for chunk in byte_chunks])
         return result_in_bytes
 
+    @staticmethod
+    def print_hex(hex_number:hex)->None:
+        """
+        Method in charge of printing hex numbers
+        @hex_data: The data we want to print
+        """
+        print(' '.join(hex_number[i:i+2] for i in range(0, len(hex_number), 2)))
 
 
 if __name__=="__main__":
