@@ -56,6 +56,7 @@ class Server:
         while True:
             #Wait until we receive a request
             message, clientAddress = self.__server_socket.recvfrom(2048)
+            dns_header=message
 
             # ! Extract data
             hex_message=message.hex()
@@ -66,38 +67,25 @@ class Server:
             #We iterate all values of the hex and we print them with colours depending of the type of header
             print("Request:")
             self.print_hex(hex_message)
-            print("")
 
             #Obtain the domain
             #Convert it from hex to bytes to then convert it to string
-
-            domain=bytes.fromhex(request["qname"]).decode()
-            transaction_id=bytes.fromhex(request["id_req"])
-            #print(domain)
+            domain = self._decode_domain(bytes.fromhex(request["qname"]).decode())
+            
 
             #Create structure of the dns answer
             #TODO: Refactor
-            domain = self._decode_domain(domain)
+            
             dns_answer=self.__generate_answer_section(domain)
+
             if dns_answer!=None:
-                dns_header=self.__dns_header(transaction_id,1)#already in bytes
                 dns_response=dns_header+dns_answer
-            else:
-                dns_response=self.__dns_header(transaction_id,0)
-            # print(dns_response)
-
-            #TODO: print in hexadecimal with colours for the dns_response
+            print("Response:")
             self.print_hex(dns_response.hex())
-
-            #67 6f 6f 67 6c 65 2e 63 6f 6d
-            #67 6f 6f 67 6c 65 03 63 6f 6d
 
 
             #Send answer
-            # print(dns_response)
-            # modifiedMessage = dns_response.decode().upper()
             self.__server_socket.sendto(dns_response,clientAddress)
-            #self.__server_socket.close()
 
 
 
@@ -121,10 +109,6 @@ class Server:
             real_domain += chr(domain_bytes[i + j])
 
         return real_domain
-            
-
-        
-        
 
     #Methods to generate headers
     def __generate_answer_section(self,domain)->bytes:
@@ -137,43 +121,31 @@ class Server:
             return
         
         #TODO: Refactor
-        name =self.int_to_bytes(204,4) #c0 0c (hex)=204 (dec)#aux.get("Type")
-
-
-        type_= aux.get("Type")
-        type_code=b""
-        if type_=="A":
-            type_code=self.int_to_bytes(1,2)#1=type A
-        else:
-            raise ValueError("[ERROR] we only accept type A for this lab")
-        class_= aux.get("Class")
-        if class_=="IN":
-            class_=self.int_to_bytes(1,2)#1=class IN(internet)
-
-
-        ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
-
-
+        answer=b""
         list_ip=aux.get("IP")
-        rdata=b""
         for ip in list_ip:
-            rdata+=ip.encode()
-        
-        #TODO: the length must be in bytes
-        rdlength=self.int_to_bytes(len(rdata),2)
+            name =self.int_to_bytes(192,1) + self.int_to_bytes(12,1) #c0 0c (hex)=204(dec)
+            type_= aux.get("Type")
+            type_code=b""
+            if type_=="A":
+                type_code=self.int_to_bytes(1,2)#1=type A
+            else:
+                raise ValueError("[ERROR] we only accept type A for this lab")
+            class_= aux.get("Class")
+            if class_=="IN":
+                class_=self.int_to_bytes(1,2)#1=class IN(internet)
 
 
-        if self.__debug:
-            print(type(name))
-            print(type(type_code))
-            print(type(class_))
-            print(type(ttl))
-            print(type(rdata))
-            print(type(rdlength))
+            ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
 
-        return name+type_code+class_+ttl+rdlength+rdata
+            rdlength=self.int_to_bytes(4,2) # As ip always has 32 bits
+            
+            rdata=b""
+            for i in ip.split("."):
+                rdata+=self.int_to_bytes(int(i),1)
+            answer += name+type_code+class_+ttl+rdlength+rdata
+        return answer
     
-
     def find_domain(self,domain)->dict:
         """
         This method is in charge of finding the domain and 
@@ -186,52 +158,7 @@ class Server:
         except Exception as error:
             print(f"[ERROR]: domain not found {error}")
             return 
-    
-    def __dns_header(self,transaction_id:bytes,found:bool)->bytes:
-        """
-        This method is in charge of generating the header of the dns
-        @transaction_id: is the id of the request
-        @found:it tells us if we found dns answer
-        """
-        #We generate the ID
-        dns_id=transaction_id
 
-        #We generate the flag header
-        flags = self.generate_flags(found)
-
-        #We generate the other headers
-        qdcount=self.int_to_bytes(1,2)#number of entries in question section
-
-        #Based on message type
-        ancount=self.int_to_bytes(0,2)#number of resource records in answer section
-
-        nscount=self.int_to_bytes(0,2)#number of name server resource records in authorative records
-        arcount=self.int_to_bytes(0,2)#number of resource records additional record section
-
-        return dns_id+flags+qdcount+ancount+nscount+arcount
- 
-    def generate_flags(self,found:bool)->bytes:
-        """
-        We generate the flag header
-        """
-        qr = "1"  # 0 is query, 1 is response
-        opcode = "0000"  # Standard query
-        aa = "1"    # Authoritative answer
-        tc = "0"    #Message truncated
-        rd = "0"    #recursion desired
-        ra = "0"    #recursion avaible
-        z = "000"   #for future use
-        #If we found an ip address then is 0 (no error)
-        if found:
-            rcode ="0000"  #Response code
-        #The name reference in the query does not exist( code 3)
-        else:
-            rcode="0011"
-
-        flags=qr+opcode+aa+tc+rd+ra+z+rcode
-
-        #We convert it to bytes and we return it
-        return self.bits_to_bytes(flags)
     
     #Method to extract data of a request
     def extract_data_of_request(self,hex_data:hex)->dict:
@@ -290,7 +217,12 @@ class Server:
         Method in charge of printing hex numbers
         @hex_data: The data we want to print
         """
-        print(' '.join(hex_number[i:i+2] for i in range(0, len(hex_number), 2)))
+
+        for i in range(0, len(hex_number), 32):  # Cada 16 números es 32 caracteres en formato hexadecimal
+            group = hex_number[i:i + 32]  # Toma 32 caracteres
+            formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
+            print(formatted_group)
+        # print(' '.join(hex_number[i:i+2] for i in range(0, len(hex_number), 2)))
 
 
 if __name__=="__main__":

@@ -39,7 +39,9 @@ class Client:
 
             #Send request to the server
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
-            print(self.__client_socket.recvfrom(2048))
+            response = self.__client_socket.recvfrom(2048)
+
+
     
     #Functions to create the request headers + data
     def __dns_header(self)->bytes:
@@ -99,6 +101,15 @@ class Client:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
     
+    def print_message(self, message)->None:
+        """
+        Method to print the message from hex
+        @message: The message we want to print
+        """
+        message_hex=message.hex()
+        #TODO: PRINT THE MESSAGE
+
+
     #static methods
     @staticmethod
     def int_to_bytes(number:int,byte_size:int)->bytes:
