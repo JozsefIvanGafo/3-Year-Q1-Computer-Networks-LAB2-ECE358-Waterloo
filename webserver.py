@@ -24,6 +24,14 @@ class WebServer:
         self._server_socket.listen(1)
         print("The server is ready to receive")
 
+        #Here we have the content when we don't find the requested file
+        self._error_file_path=os.getcwd()+"/404_not_found.html"
+        try:
+            with open(self._error_file_path, "rb") as file:
+                    self._error_file_content = file.read()
+        except FileNotFoundError as error:
+            print(f"[ERROR] An exception occurred: {error}")
+
 
     def initialization(self):
         """
@@ -58,12 +66,13 @@ class WebServer:
                 with open(file_path, "rb") as file:
                     file_content = file.read()
                     #We create the headers+data for the http response
-                    response=self.__http_response(type_request,file_path,file_content)
+                    response=self.__http_response(type_request,file_path,file_content,"200 OK")
 
             #If we didn't find the file we send http error response
             except FileNotFoundError:
                 print("[ERROR] File not found")
-                response=self.__http_error_response()
+                #response=self.__http_error_response()
+                response=self.__http_response(type_request,self._error_file_path,self._error_file_content,"404 Not Found")
 
             #If we encounter another type of error
             except Exception as error:
@@ -81,20 +90,20 @@ class WebServer:
 
     
     #Methods to generate the response of the web server
-    def __http_response(self,type_request:str,file_path:str,file_content:bytes)->str:
+    def __http_response(self,type_request:str,file_path:str,file_content:bytes,status_code:str)->str:
         """
         Description: This method is in charge of returning the response of the http request
         @type_request: The type of request the user is requesting (HEAD or GET)
         @file_path: The file path the client is requesting
         @file_content: The content of the file the user is requesting
+        @status_code: is a string containing the status code of the response
         @return: It returns the response with all the headers and possible data
         """
-        status="HTTP/1.1 200 OK\r\n"
+        status="HTTP/1.1 "+status_code+"\r\n"
         connection=self.__get_connection_header()
         date=self.__get_date_header()
         server=self.__get_server_header()
         last_mod=self.__get_last_mod_date_header(file_path)
-        #TODO: EL CONTENT LENGTH SE METE SI ES HEAD?
         content_length=self.__get_content_length_header(file_content)
         content_type=self.__get_content_type_header()
 
@@ -107,23 +116,6 @@ class WebServer:
         #If is type get we return all headers + file content
         return response+"\r\n"+file_content.decode()
         
-
-    def __http_error_response(self)->str:
-        """
-        Description: This method is in charge of returning the error response
-        @return: it returns a string congaing the headers of the status code 404 Not found 
-        """
-        #TODO: Correct 404 error
-        status="HTTP/1.1 404 Not Found\r\n"
-        date=self.__get_date_header()
-        server=self.__get_server_header()
-        message_not_found = "404 Not Found"
-        content_length=self.__get_content_length_header(message_not_found.encode())
-        content_type= "text/plain\r\n"
-        file_content = "\r\n"+ message_not_found+ "\r\n"
-        return status+date+server+content_length + content_type + file_content 
-
-
 
     #Static methods for obtaining headers
     @staticmethod
