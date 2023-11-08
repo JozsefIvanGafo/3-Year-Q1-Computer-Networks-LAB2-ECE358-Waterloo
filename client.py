@@ -15,11 +15,13 @@ class Client:
         We initialize the request to the dns server
         """
         while True:
-
-            domain=input("Enter domain: ")
+            print("Input from the user:")
+            domain=input("Enter Domain Name: ")
+            domain=domain.lower()
 
             #We finish connection if domain is end
             if domain=="end":
+                print("Session Ended")
                 break
 
             #We create the structure of the dns request
@@ -28,19 +30,18 @@ class Client:
             dns_request=dns_header+dns_query
 
             #If we want to know what we are sending
+            #TODO: DELETE AT THE END
             if self.__debug:
                 message_hex=dns_request.hex()
-                #Print by pairs
-                groups = [message_hex[i:i+2] for i in range(0, len(message_hex), 2)]
-
-                for pair in groups:
-                    print(pair, end=" ")
-                print("")
+                self.print_hex(message_hex)
 
             #Send request to the server
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
-            response = self.__client_socket.recvfrom(2048)
-
+            response, addr = self.__client_socket.recvfrom(2048)
+            #TODO: HANDLE ERROR, NO EXISTE EL DOMINIO MIRA PIAZZA: https://piazza.com/class/llomgydu5c3tm/post/248
+            print("Output:")
+            # self.print_hex(response.hex())
+            self.print_response(response)
 
     
     #Functions to create the request headers + data
@@ -100,15 +101,55 @@ class Client:
 
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
-    
-    def print_message(self, message)->None:
-        """
-        Method to print the message from hex
-        @message: The message we want to print
-        """
-        message_hex=message.hex()
-        #TODO: PRINT THE MESSAGE
 
+    def print_response(self,response:bytes)->None:
+        """
+        Method to print the response from the server
+        @response: The response we want to print
+        """
+        # Domain name
+        x = response[12]
+        domain = response[13:13+x].decode()
+        x2 = response[13+x]
+        domain += "." + response[14+x:14+x+x2].decode() + ": "
+        i = 14+x+x2
+        
+        while response[i:i+1] != b'\xc0':
+            i += 1
+
+        final_part = response[i:]
+        line = ""
+        for x in range(0, len(final_part), 16):
+            line += domain
+            line += "type "
+            aux = 2
+
+            if(int.from_bytes(final_part[x+aux:x+aux+2], byteorder="big") == 1):
+                line += "A, "
+            #TODO: ERROR que hacemos?
+            line += "class "
+            aux +=2
+            if(int.from_bytes(final_part[x+aux:x+aux+2], byteorder="big")):
+                line += "IN, "
+            aux +=2
+
+            line += "TTL "
+            line += str(int.from_bytes(final_part[x+aux:x+aux+4],byteorder="big"))
+            aux +=4
+
+
+            line += ", addr ("
+            line += str(int.from_bytes(final_part[x+aux:x+aux+2],byteorder="big"))
+            line += ")"
+            aux+=2
+
+            for i in range(4):
+                line += str(final_part[x+aux])
+                if i != 3:
+                    line += "."
+                aux +=1
+            line += "\n"
+        print(line)
 
     #static methods
     @staticmethod
@@ -137,6 +178,20 @@ class Client:
 
         result_in_bytes = bytes([int(chunk, 2) for chunk in byte_chunks])
         return result_in_bytes
+
+#TODO: Delete this method
+    @staticmethod
+    def print_hex(hex_number:hex)->None:
+        """
+        Method in charge of printing hex numbers
+        @hex_data: The data we want to print
+        """
+
+        for i in range(0, len(hex_number), 32):  # Cada 16 números es 32 caracteres en formato hexadecimal
+            group = hex_number[i:i + 32]  # Toma 32 caracteres
+            formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
+            print(formatted_group)
+
 
 
 

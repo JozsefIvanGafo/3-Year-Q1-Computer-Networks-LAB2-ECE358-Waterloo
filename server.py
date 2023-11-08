@@ -56,7 +56,7 @@ class Server:
         while True:
             #Wait until we receive a request
             message, clientAddress = self.__server_socket.recvfrom(2048)
-            dns_header=message
+            
 
             # ! Extract data
             hex_message=message.hex()
@@ -71,15 +71,27 @@ class Server:
             #Obtain the domain
             #Convert it from hex to bytes to then convert it to string
             domain = self._decode_domain(bytes.fromhex(request["qname"]).decode())
+            transaction_id=bytes.fromhex(request["id_req"])
+
             
+
 
             #Create structure of the dns answer
             #TODO: Refactor
             
-            dns_answer=self.__generate_answer_section(domain)
+            dns_answer = self.__generate_answer_section(domain)
+            aux=len(self.__domain_records[domain]["IP"])
+            
+            
 
             if dns_answer!=None:
-                dns_response=dns_header+dns_answer
+                dns_header=self.__dns_header(transaction_id,1, aux)#already in bytes
+
+                dns_response=dns_header+bytes.fromhex(request["qsection"])+dns_answer
+            else:
+                #TODO: HAY QUE REVISAR ESTE ERROR
+                dns_response=self.__dns_header(transaction_id,0, aux)+request["qsection"]
+
             print("Response:")
             self.print_hex(dns_response.hex())
 
@@ -107,10 +119,57 @@ class Server:
         length_2 = domain_bytes[i]
         for j in range(1, length_2 + 1):
             real_domain += chr(domain_bytes[i + j])
+        
+        
 
         return real_domain
 
     #Methods to generate headers
+    def __dns_header(self,transaction_id:bytes,found:bool, ancount: int)->bytes:
+        """
+        This method is in charge of generating the header of the dns
+        @transaction_id: is the id of the request
+        @found:it tells us if we found dns answer
+        """
+        #We generate the ID
+        dns_id=transaction_id
+            #We generate the flag header
+        flags = self.generate_flags(found)
+
+        #We generate the other headers
+        qdcount=self.int_to_bytes(1,2)#number of entries in question section
+        #Based on message type
+        ancount=self.int_to_bytes(ancount,2)#number of resource records in answer section
+
+        nscount=self.int_to_bytes(0,2)#number of name server resource records in authorative records
+        
+        arcount=self.int_to_bytes(0,2)#number of resource records additional record section
+
+        return dns_id+flags+qdcount+ancount+nscount+arcount
+
+    def generate_flags(self,found:bool)->bytes:
+        """
+        We generate the flag header
+        """
+        qr = "1"  # 0 is query, 1 is response
+        opcode = "0000"  # Standard query
+        aa = "1"    # Authoritative answer
+        tc = "0"    #Message truncated
+        rd = "0"    #recursion desired
+        ra = "0"    #recursion available
+        z = "000"   #for future use
+        #If we found an ip address then is 0 (no error)
+        if found:
+            rcode ="0000"  #Response code
+        #The name reference in the query does not exist( code 3)
+        else:
+            rcode="0011"
+
+        flags=qr+opcode+aa+tc+rd+ra+z+rcode
+
+        #We convert it to bytes and we return it
+        return self.bits_to_bytes(flags)
+    
     def __generate_answer_section(self,domain)->bytes:
         """
         Method is in charge of creating the answer header
@@ -135,7 +194,6 @@ class Server:
             if class_=="IN":
                 class_=self.int_to_bytes(1,2)#1=class IN(internet)
 
-
             ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
 
             rdlength=self.int_to_bytes(4,2) # As ip always has 32 bits
@@ -144,6 +202,8 @@ class Server:
             for i in ip.split("."):
                 rdata+=self.int_to_bytes(int(i),1)
             answer += name+type_code+class_+ttl+rdlength+rdata
+
+            
         return answer
     
     def find_domain(self,domain)->dict:
@@ -177,8 +237,7 @@ class Server:
             "nscount":hex_data[16:20],
             "arcount":hex_data[20:24],
             "qname":hex_data[24:-8],#We know it will always be -8
-            "qtype":hex_data[-8:-4],
-            "qclass":hex_data[-4:]
+            "qsection":hex_data[24:]
         }
         return dictionary
 
@@ -222,7 +281,7 @@ class Server:
             group = hex_number[i:i + 32]  # Toma 32 caracteres
             formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
             print(formatted_group)
-        # print(' '.join(hex_number[i:i+2] for i in range(0, len(hex_number), 2)))
+        
 
 
 if __name__=="__main__":
