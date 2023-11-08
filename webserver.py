@@ -94,6 +94,7 @@ class WebServer:
         date=self.__get_date_header()
         server=self.__get_server_header()
         last_mod=self.__get_last_mod_date_header(file_path)
+        #TODO: EL CONTENT LENGTH SE METE SI ES HEAD?
         content_length=self.__get_content_length_header(file_content)
         content_type=self.__get_content_type_header()
 
