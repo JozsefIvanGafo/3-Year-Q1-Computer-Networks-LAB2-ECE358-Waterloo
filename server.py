@@ -7,9 +7,11 @@ from socket import *
 class Server:
 
     def __init__(self,serverIP:str,serverPort:int,debug:bool=True) -> None:
+        #Set properties for the server
         self.__server_ip=serverIP
         self.__server_port=serverPort
         self.__debug=debug
+
         #We load the domain records
         self.__domain_records={
             "google.com": {
@@ -58,9 +60,9 @@ class Server:
             message, clientAddress = self.__server_socket.recvfrom(2048)
             
 
-            # ! Extract data
+            # We extract the data and we convert it into message
             hex_message=message.hex()
-            # ! We  extracted the data on a dictionary
+            # We extract the data into a dictionary (it makes it easier to id and extract data)
             request=self.extract_data_of_request(hex_message)
 
 
@@ -77,20 +79,20 @@ class Server:
 
 
             #Create structure of the dns answer
-            #TODO: Refactor
             
             dns_answer = self.__generate_answer_section(domain)
-            aux=len(self.__domain_records[domain]["IP"])
             
             
 
             if dns_answer!=None:
-                dns_header=self.__dns_header(transaction_id,1, aux)#already in bytes
+                aux=len(self.__domain_records[domain]["IP"])
+                dns_header=self.__dns_header(transaction_id,found=True, ancount=aux)#already in bytes
 
                 dns_response=dns_header+bytes.fromhex(request["qsection"])+dns_answer
             else:
-                #TODO: HAY QUE REVISAR ESTE ERROR
-                dns_response=self.__dns_header(transaction_id,0, aux)+request["qsection"]
+                #In case of dns not found ancount is 0, and the rcode is "0011", meaning the query doesn't exist
+                aux=0
+                dns_response=self.__dns_header(transaction_id,found=False,ancount=aux)+bytes.fromhex(request["qsection"])
 
             print("Response:")
             self.print_hex(dns_response.hex())
@@ -107,21 +109,26 @@ class Server:
         @domain: The domain we want to decode
         @return: The decoded domain
         """
+        #example we want to extract google.com
         real_domain = ""
         domain_bytes = domain.encode()
 
+        #We extract the first part "google"
         length_1 = domain_bytes[0]
         for i in range(1, length_1 + 1):
             real_domain += chr(domain_bytes[i])
-        real_domain += "."
 
+
+        real_domain += "."#"google.""
+
+        #We extract the second part "com"
         i = length_1 + 1
         length_2 = domain_bytes[i]
         for j in range(1, length_2 + 1):
             real_domain += chr(domain_bytes[i + j])
+        #google.com
         
-        
-
+    
         return real_domain
 
     #Methods to generate headers

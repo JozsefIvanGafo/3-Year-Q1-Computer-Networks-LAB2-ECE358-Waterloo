@@ -8,7 +8,6 @@ class Client:
         self.__server_ip=server_ip
         self.__server_port=server_port
         self.__client_socket=socket(AF_INET, SOCK_DGRAM)
-        self.__debug=True
 
     def initialize(self):
         """
@@ -30,18 +29,21 @@ class Client:
             dns_request=dns_header+dns_query
 
             #If we want to know what we are sending
-            #TODO: DELETE AT THE END
-            if self.__debug:
-                message_hex=dns_request.hex()
-                self.print_hex(message_hex)
 
             #Send request to the server
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
             response, addr = self.__client_socket.recvfrom(2048)
             #TODO: HANDLE ERROR, NO EXISTE EL DOMINIO MIRA PIAZZA: https://piazza.com/class/llomgydu5c3tm/post/248
             print("Output:")
-            # self.print_hex(response.hex())
-            self.print_response(response)
+            data=self.__extract_data(response.hex())
+            #If there are no errors
+            if data["flags_req"][2:]=="03":
+                domain=data["qname"]
+                print(f"[ERROR]: the DNS {domain} was not found")
+            else:
+                # self.print_hex(response.hex())
+                self.print_response(response)
+            print("")
 
     
     #Functions to create the request headers + data
@@ -102,6 +104,64 @@ class Client:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
 
+
+    def __extract_data(self,hex_data:hex)->dict:
+        """
+        Method of extracting the data from the server
+        @hex_data: All the data of the response in hex
+        @return dict: It return a dictionary with all the fields
+        """
+        #General data of the response
+        data={
+            "id_req":hex_data[:4],
+            "flags_req":hex_data[4:8],
+            "qdcount":hex_data[8:12],
+            "ancount":hex_data[12:16],
+            "nscount":hex_data[16:20],
+            "arcount":hex_data[20:24],
+            "qname":[],
+            "qtype":[],
+            "qclass":[],
+        }
+        i=24
+        #We extract the query data
+        domain,qtype,qclass=self.__extract_query(hex_data,i)
+        data["qname"]=domain
+        data["qtype"]=qtype
+        data["qclass"]=qclass
+        return data
+
+    def __extract_query(self, hex_data: hex, i: int) -> [str, hex, hex, int]:
+        """
+        This method is in charge of finding the fields of the query
+        @hex_data: the response in hex
+        @i: integer that represents the position in hex_data
+        @return: returns the domain, qtype, qclass, and the position in hex_data
+        """
+        # Now we extract the domain question
+        domain = ""
+        first_label = True
+
+        while hex_data[i:i+2] != "00":
+            segment_length = int(hex_data[i:i+2], 16)
+            i += 2
+
+            if not first_label:
+                domain += "."
+
+            domain += self.hex_to_str(hex_data[i:i + 2 * segment_length])
+            i += 2 * segment_length
+            first_label = False
+
+        # Skip over the null terminator
+        i += 2
+
+        return domain, hex_data[i:i+2], hex_data[i+2:i+4]
+
+
+
+
+    #Methods to print the output
     def print_response(self,response:bytes)->None:
         """
         Method to print the response from the server
@@ -113,6 +173,7 @@ class Client:
         x2 = response[13+x]
         domain += "." + response[14+x:14+x+x2].decode() + ": "
         i = 14+x+x2
+
         
         while response[i:i+1] != b'\xc0':
             i += 1
@@ -179,18 +240,15 @@ class Client:
         result_in_bytes = bytes([int(chunk, 2) for chunk in byte_chunks])
         return result_in_bytes
 
-#TODO: Delete this method
     @staticmethod
-    def print_hex(hex_number:hex)->None:
+    def hex_to_str(hex_data:hex)->str:
         """
-        Method in charge of printing hex numbers
-        @hex_data: The data we want to print
+        Method to convert a hexadecimal into a string
+        @hex_data: hexadecimal numbers that contain a string
+        @return str: return te conversion from hex to string
         """
 
-        for i in range(0, len(hex_number), 32):  # Cada 16 números es 32 caracteres en formato hexadecimal
-            group = hex_number[i:i + 32]  # Toma 32 caracteres
-            formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
-            print(formatted_group)
+        return bytes.fromhex(hex_data).decode('utf-8')
 
 
 
