@@ -1,0 +1,62 @@
+# ECE-358 Lab-2
+
+**University of Waterloo | Fall 2023 | Group 151**
+
+**Team Members:**
+- József IVÁN GAFO (21111635) - jivangaf@uwaterloo.ca
+- Sonia NAVAS RUTETE (21111397) - srutete@uwaterloo.ca
+
+## Description
+
+- **Task 1: Webserver**
+  - Responsible for running a webserver that handles GET and HEAD requests from a web browser or Postman.
+
+- **Task 2: DNS Server**
+  - Responsible for running a server and a client server that handles DNS questions and answers about a specific domain.
+
+## How to Run the Code
+
+### Task 1: Webserver
+
+1. Navigate on the terminal until you reach the folder where `webserver.py`.
+
+2. Run the Python file `webserver.py`:
+   - Using Python 3: `python3 webserver.py` or `py webserver.py`.
+   - Make sure that `HelloWorld.html` and `404_not_found.html` are under the same folder as `webserver.py`.
+
+3. Open your web browser or Postman and enter the URL:
+   - URL without a folder, getting the correct HTML object: [http://127.0.0.1:11000/HelloWorld.html]
+   - URL without a folder, resulting in a 404 error: [http://127.0.0.1:11000/HelloWorlds.html]
+
+4. To close the webserver, simply terminate the terminal.
+
+### Task 2: DNS Server
+
+1. Navigate on the terminal until you reach the folder where `server.py` and `client.py` are located.
+
+2. Run the server Python file `server.py`:
+   - Using Python 3: `python3 server.py` or `py server.py`.
+
+3. Run the client Python file `client.py` on a different terminal:
+   - Using Python 3: `python3 client.py` or `py client.py`.
+
+4. In the client terminal, you will be asked to enter a domain:
+   - Domains found on the server are : "google.com," "youtube.com," "uwaterloo.ca," "wikipedia.org," and "amazon.ca."
+   - If other domains are entered, the client will not receive any answer and will get the RCODE "0011."
+
+5. The client terminal will print the related IPv4 to your domain; if not found, it will print an error message saying it didn't find the related IPv4.
+
+6. In the `client.py`, it will print in hexadecimals the query from the client and the response that it sends.
+
+7. To close the client, type the domain "end."
+
+8. To close the server, terminate the terminal.
+
+## Notes
+
+- Ensure Python 3 is installed on your system.
+- Ensure that the libraries `socket`, `random`, and `os` are installed on the device.
+- Make sure that `HelloWorld.html` and `404_not_found.html` are under the same folder as `webserver.py`.
+- The webserver runs on [http://127.0.0.1:11000/].
+
+Feel free to reach out to the team members listed above for any questions or concerns.
