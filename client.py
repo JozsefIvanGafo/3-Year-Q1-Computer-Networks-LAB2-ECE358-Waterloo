@@ -131,7 +131,6 @@ class Client:
                 "qtype":qtype,
                 "qclass":qclass
             })
-        
         #We skip 8 hex that are the qsection(owner name)
         # We extract the answer section
         i+=8
@@ -157,20 +156,22 @@ class Client:
         @i: integer that represents the position in hex_data
         @return: returns the domain, qtype, qclass, and the position in hex_data
         """
-        # Now we extract the domain question
-        domain = ""
-        first_label = True
 
-        while hex_data[i:i+2] != "00":
-            segment_length = int(hex_data[i:i+2], 16)
-            i += 2
+        #obtain the first part of the domain length (*2 because they are hex not bytes)
+        length_first_part=self.hex_to_int(hex_data[i:i+2])*2
+        i+=2
+        first_domain=self.hex_to_str(hex_data[i:i+length_first_part])
+        i+=length_first_part
 
-            if not first_label:
-                domain += "."
-
-            domain += self.hex_to_str(hex_data[i:i + 2 * segment_length])
-            i += 2 * segment_length
-            first_label = False
+        #We obtain the second part (*2 because they are hex not bytes)
+        length_second_part=self.hex_to_int(hex_data[i:i+2])*2
+        i+=2
+        second_domain=self.hex_to_str(hex_data[i:i+length_second_part])
+        i+=length_second_part
+        
+        #We create the domain
+        domain=first_domain+"."+second_domain
+                                      
 
         # Skip over the null terminator
         i += 2
