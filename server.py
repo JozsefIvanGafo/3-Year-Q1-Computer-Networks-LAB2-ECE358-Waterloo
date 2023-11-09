@@ -3,12 +3,11 @@ from socket import *
 
 #Create class Server
 class Server:
-
+    #Setup
     def __init__(self,serverIP:str,serverPort:int,debug:bool=True) -> None:
         #Set properties for the server
         self.__server_ip=serverIP
         self.__server_port=serverPort
-        self.__debug=debug
 
         #We load the domain records
         self.__domain_records={
@@ -50,7 +49,6 @@ class Server:
 
         print("The server is ready to receive")
         
-
     #We initialize the server
     def initialize(self):
         while True:
@@ -87,11 +85,11 @@ class Server:
             if dns_answer!=b"":
                 #The number of ipv4 under a domain
                 number_of_ipv4=len(self.__domain_records[domain]["IP"])
-                dns_header=self.__dns_header(transaction_id,found=True, ancount=number_of_ipv4)#already in bytes
+                dns_header=self.__generate_dns_header(transaction_id,found=True, ancount=number_of_ipv4)#already in bytes
 
             else:
                 #In case of dns not found ancount is 0, and the rcode is "0011", meaning the query doesn't exist
-                dns_header=self.__dns_header(transaction_id,found=False,ancount=0)
+                dns_header=self.__generate_dns_header(transaction_id,found=False,ancount=0)
 
             #We obtain the response in bytes to the client
             dns_response=dns_header+dns_question+dns_answer
@@ -104,10 +102,8 @@ class Server:
             #Send the answer to client
             self.__server_socket.sendto(dns_response,clientAddress)
 
-
-    
     #Methods to generate headers
-    def __dns_header(self,transaction_id:bytes,found:bool, ancount: int)->bytes:
+    def __generate_dns_header(self,transaction_id:bytes,found:bool, ancount: int)->bytes:
         """
         This method is in charge of generating the header of the dns
         @transaction_id: is the id of the request
@@ -190,7 +186,7 @@ class Server:
             rdlength=self.__int_to_bytes(4,2)
             
             #We obtain the ipv4
-            rdata = self.__ipv4_to_bytes(ipv4)
+            rdata = self.__str_ipv4_to_bytes(ipv4)
 
             #we obtain the ith answer 
             answer += name+type_code+class_+ttl+rdlength+rdata
@@ -280,7 +276,7 @@ class Server:
 
         return domain, hex_data[i:i+2], hex_data[i+2:i+4],i
 
-    def __find_domain_from_database(self,domain)->dict:
+    def __find_domain_from_database(self,domain:str)->dict:
         """
         This method is in charge of finding the domain and 
         returning the dictionary with the different values for that domain
@@ -294,8 +290,8 @@ class Server:
             return 
 
 
-    #Methods to translate info
-    def __ipv4_to_bytes(self, ipv4:str)->bytes:
+    #Methods to translate info of single headers
+    def __str_ipv4_to_bytes(self, ipv4:str)->bytes:
         """
         This method is in charge of changing an ip string into bytes
         @ip: string containing an ip address
@@ -314,10 +310,10 @@ class Server:
         @return: We return the class into bytes
         """
         if class_str=="IN":
-            class_=self.__int_to_bytes(1,2)#1=class IN(internet)
+            class_bytes=self.__int_to_bytes(1,2)#1=class IN(internet)
         else:
             raise ValueError("[ERROR] We only accept type IN for this lab")
-        return class_
+        return class_bytes
 
     def __str_type_code_to_bytes(self, type_code_str:str)->bytes:
         """
@@ -418,10 +414,14 @@ class Server:
         Method in charge of printing hex numbers
         @hex_data: The data we want to print
         """
-
-        for i in range(0, len(hex_number), 32):  # Cada 16 números es 32 caracteres en formato hexadecimal
-            group = hex_number[i:i + 32]  # Toma 32 caracteres
-            formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
+        # 16 numbers are equivalent to 32 characters
+        for i in range(0, len(hex_number), 32): 
+            group = hex_number[i:i + 32]  
+            
+            # Join pairs of hex digits with a space for better readability
+            formatted_group = ' '.join(group[i:i + 2] for i in range(0, 32, 2))  
+            
+            # Print the formatted group
             print(formatted_group)
 
 
