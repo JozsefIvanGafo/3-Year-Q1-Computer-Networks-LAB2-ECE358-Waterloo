@@ -18,8 +18,9 @@ class Client:
             domain=input("Enter Domain Name: ")
             domain=domain.lower()
 
-            #We finish connection if domain is end
+            #We finish connection if input is end
             if domain=="end":
+                self.__client_socket.close()
                 print("Session Ended")
                 break
 
@@ -28,12 +29,9 @@ class Client:
             dns_query=self.__dns_query(domain)
             dns_request=dns_header+dns_query
 
-            #If we want to know what we are sending
-
             #Send request to the server
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
             response, addr = self.__client_socket.recvfrom(2048)
-            #TODO: HANDLE ERROR, NO EXISTE EL DOMINIO MIRA PIAZZA: https://piazza.com/class/llomgydu5c3tm/post/248
             print("Output:")
             data=self.__extract_data(response.hex())
             #If there are no errors
@@ -41,7 +39,6 @@ class Client:
                 domain=data["qname"]
                 print(f"[ERROR]: the DNS {domain} was not found")
             else:
-                # self.print_hex(response.hex())
                 self.print_response(response)
             print("")
 
@@ -104,7 +101,6 @@ class Client:
         #We convert it to bytes and we return it
         return self.bits_to_bytes(flags)
 
-
     def __extract_data(self,hex_data:hex)->dict:
         """
         Method of extracting the data from the server
@@ -157,9 +153,6 @@ class Client:
         i += 2
 
         return domain, hex_data[i:i+2], hex_data[i+2:i+4]
-
-
-
 
     #Methods to print the output
     def print_response(self,response:bytes)->None:
@@ -249,8 +242,6 @@ class Client:
         """
 
         return bytes.fromhex(hex_data).decode('utf-8')
-
-
 
 
 if __name__=="__main__":
