@@ -34,12 +34,14 @@ class Client:
             response, addr = self.__client_socket.recvfrom(2048)
             print("Output:")
             data=self.__extract_data(response.hex())
+
             #If there are no errors
             if data["flags_req"][2:]=="03":
-                domain=data["qname"]
+                domain=data["question"][0]["qname"]
                 print(f"[ERROR]: the DNS {domain} was not found")
             else:
-                self.print_response(response)
+                #TODO: self.print_response(response)
+                self.print_response(data)
             print("")
 
     
@@ -115,17 +117,37 @@ class Client:
             "ancount":hex_data[12:16],
             "nscount":hex_data[16:20],
             "arcount":hex_data[20:24],
-            "qname":[],
-            "qtype":[],
-            "qclass":[],
+            "question":[],
+            "answers":[]
         }
         i=24
         #We extract the query data
-        domain,qtype,qclass=self.__extract_query(hex_data,i)
-        data["qname"]=domain
-        data["qtype"]=qtype
-        data["qclass"]=qclass
+        qdcount=int(data["qdcount"],16)
+        for _ in range(qdcount):
+            domain,qtype,qclass,i=self.__extract_query(hex_data,i)
+            data["question"].append({
+                "qname":domain,
+                "qtype":qtype,
+                "qclass":qclass
+            })
+        
+        #We skip 8 hex that are the qsection(owner name)
+        # We extract the answer section
+        i+=8
+        #Now we iterate as many responses we have
+        ancount=int(data["ancount"], 16)
+        for _ in range(ancount):
+            anname,answer_type, answer_class, answer_ttl, rd_length, rd_data, i = self.__extract_answer_section(hex_data, i)
+            data["answers"].append({
+                "anname":anname,
+                "answer_type": answer_type,
+                "answer_class": answer_class,
+                "answer_ttl": answer_ttl,
+                "rd_length": rd_length,
+                "rd_data": rd_data,
+        })
         return data
+    
 
     def __extract_query(self, hex_data: hex, i: int) -> [str, hex, hex, int]:
         """
@@ -152,15 +174,95 @@ class Client:
         # Skip over the null terminator
         i += 2
 
-        return domain, hex_data[i:i+2], hex_data[i+2:i+4]
+        return domain, hex_data[i:i+2], hex_data[i+2:i+4],i
+    
+
+    def __extract_answer_section(self, hex_data, i):
+        """
+        Extracts the answer section from the response in hex.
+        @param hex_data: Hex data of the response.
+        @param i: Position in hex_data.
+        @return: Owner name, type, class, TTL, RDLength, RData, and updated position in hex_data.
+        """
+        #get anname
+        anname=hex_data[i:i+4]
+        i+=4
+
+        #get answer type
+        answer_type = hex_data[i:i+4]
+        i += 4
+
+        #GEt answer type
+        answer_class = hex_data[i:i+4]
+        i += 4
+
+        #Get answer ttl 
+        answer_ttl = hex_data[i:i+8]
+        i += 8
+
+        #get rdlength
+        rd_length = hex_data[i:i+4]
+        i += 4
+
+        hex_data_length=self.hex_to_int(rd_length)*2#*2 because they are bytes
+
+        rd_data = hex_data[i:i + hex_data_length]
+        i += hex_data_length
+
+        return anname,answer_type, answer_class, answer_ttl, rd_length, rd_data, i
+
 
     #Methods to print the output
-    def print_response(self,response:bytes)->None:
+    #TODO: def print_response(self,response:bytes)->None:
+    def print_response(self,response:dict)->None:
         """
         Method to print the response from the server
-        @response: The response we want to print
+        @response: Is a dictionary containing the answer of the server 
         """
-        # Domain name
+        line=""
+
+        #We obtain the domain from all the data extracted
+        domain=response["question"][0]["qname"]
+        
+
+        answer_list=response["answers"]
+        for answer in answer_list:
+            #We create the print message
+            line=""
+            line+=domain+": "
+
+            #Get answer type
+            if self.hex_to_int(answer["answer_type"])==1:
+                line+="Type: A, "
+            else:
+                #For the moment we only accept type A answers
+                raise ValueError("[ERROR]: We only accept type A")
+            
+            #get class
+            if self.hex_to_int(answer["answer_class"])==1:
+                line+="Class: IN, "
+            else:
+                raise ValueError("[ERROR]: We only accept IN")
+
+            #get ttl
+            line+="TTL: "+str(self.hex_to_int(answer["answer_ttl"]))+", "
+
+            #get rdlength
+            rdlength=self.hex_to_int(answer["rd_length"])
+
+            if rdlength==4:
+                line+="addr("+str(rdlength)+")"
+            else:
+                raise ValueError("[ERROR] The client only support ipv4")
+
+            #Get ip
+            ipv4=self.hex_to_ipv4(answer["rd_data"])
+            line+=ipv4
+            #Print the answer
+            print(line)
+
+        #TODO: antiguo codigo
+        """# Domain name
         x = response[12]
         domain = response[13:13+x].decode()
         x2 = response[13+x]
@@ -203,7 +305,7 @@ class Client:
                     line += "."
                 aux +=1
             line += "\n"
-        print(line)
+        print(line)"""
 
     #static methods
     @staticmethod
@@ -242,6 +344,34 @@ class Client:
         """
 
         return bytes.fromhex(hex_data).decode('utf-8')
+    
+    @staticmethod
+    def hex_to_int(hex_data:hex)->int:
+        """
+        Convert a hexadecimal number to an integer
+        @hex_data: hexadecimal numbers that contain an integer
+        @return str: return te conversion from hex to in
+        """
+        return int(hex_data,16)
+
+    @staticmethod
+    def hex_to_ipv4(hex_data:hex)->str:
+        """
+        Convert an hexadecimal into ipv4
+        @hex_data: hexadecimal number that we want to convert into ip
+        @return: It returns a string containing the ipv4
+        """
+        ipv4_address = ""
+        aux = 0
+        for i in range(4):
+            ipv4_part = str(int(hex_data[aux:aux+2], 16))
+            ipv4_address += ipv4_part
+            if i != 3:
+                ipv4_address += "."
+            aux += 2
+            
+        return ipv4_address
+   
 
 
 if __name__=="__main__":
