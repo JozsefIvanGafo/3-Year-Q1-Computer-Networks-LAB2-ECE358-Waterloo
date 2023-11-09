@@ -33,15 +33,16 @@ class Client:
             self.__client_socket.sendto(dns_request,(self.__server_ip,self.__server_port))
             response, addr = self.__client_socket.recvfrom(2048)
             print("Output:")
-            data=self.__extract_data(response.hex())
+            response_dict=self.__extract_data(response.hex())
 
             #If there are no errors
-            if data["flags_req"][2:]=="03":
+            self.print_response(response_dict)
+            #TODO previous code
+            """if data["flags_req"][2:]=="03":
                 domain=data["question"][0]["qname"]
                 print(f"[ERROR]: the DNS {domain} was not found")
             else:
-                #TODO: self.print_response(response)
-                self.print_response(data)
+                self.print_response(response)"""
             print("")
 
     
@@ -219,6 +220,14 @@ class Client:
         Method to print the response from the server
         @response: Is a dictionary containing the answer of the server 
         """
+        #Check if we don't have any errors
+        if response["flags_req"][2:]=="03":
+            domain=response["question"][0]["qname"]
+            print(f"[ERROR]: the DNS {domain} was not found")
+
+
+
+
         line=""
 
         #We obtain the domain from all the data extracted
