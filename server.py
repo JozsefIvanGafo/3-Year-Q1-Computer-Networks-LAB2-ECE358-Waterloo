@@ -186,7 +186,7 @@ class Server:
         if aux==None:
             return
         
-        #TODO: Refactor
+
         answer=b""
         list_ip=aux.get("IP")
         for ip in list_ip:
