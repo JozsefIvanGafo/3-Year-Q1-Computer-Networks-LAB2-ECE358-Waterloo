@@ -1,6 +1,4 @@
 #import
-import random
-import json
 from socket import *
 
 #Create class Server
@@ -63,74 +61,51 @@ class Server:
             # We extract the data and we convert it into message
             hex_message=message.hex()
             # We extract the data into a dictionary (it makes it easier to id and extract data)
-            request=self.extract_data_of_request(hex_message)
+            #request=self.extract_data_of_request(hex_message)
+            request_dict=self.__extract_data(hex_message)
 
 
-            #We iterate all values of the hex and we print them with colours depending of the type of header
             print("Request:")
-            self.print_hex(hex_message)
+            #We print the request of the client
+            self.__print_hex(hex_message)
 
-            #Obtain the domain
-            #Convert it from hex to bytes to then convert it to string
-            domain = self._decode_domain(bytes.fromhex(request["qname"]).decode())
-            transaction_id=bytes.fromhex(request["id_req"])
+
+            #We extract the relevant info from the request
+            domain =request_dict["question"][0]["qname"]
+            transaction_id=self.__hex_to_bytes(request_dict["id_req"])
 
             
-
+            #We load the question section format (that is the query of the client)
+            question_dict= request_dict["question"]
+            dns_question=self.__generate_dns_question(question_dict)
 
             #Create structure of the dns answer
-            
             dns_answer = self.__generate_answer_section(domain)
             
             
+            #If is b""" it means we din't found the answer of the question asked to the client
+            if dns_answer!=b"":
+                #The number of ipv4 under a domain
+                number_of_ipv4=len(self.__domain_records[domain]["IP"])
+                dns_header=self.__dns_header(transaction_id,found=True, ancount=number_of_ipv4)#already in bytes
 
-            if dns_answer!=None:
-                aux=len(self.__domain_records[domain]["IP"])
-                dns_header=self.__dns_header(transaction_id,found=True, ancount=aux)#already in bytes
-
-                dns_response=dns_header+bytes.fromhex(request["qsection"])+dns_answer
             else:
                 #In case of dns not found ancount is 0, and the rcode is "0011", meaning the query doesn't exist
-                aux=0
-                dns_response=self.__dns_header(transaction_id,found=False,ancount=aux)+bytes.fromhex(request["qsection"])
+                dns_header=self.__dns_header(transaction_id,found=False,ancount=0)
+
+            #We obtain the response in bytes to the client
+            dns_response=dns_header+dns_question+dns_answer
 
             print("Response:")
-            self.print_hex(dns_response.hex())
+            #We print the response
+            self.__print_hex(dns_response.hex())
 
 
-            #Send answer
+            #Send the answer to client
             self.__server_socket.sendto(dns_response,clientAddress)
 
 
-
-    def _decode_domain(self,domain:str)->str:
-        """
-        Method in charge of decoding the domain
-        @domain: The domain we want to decode
-        @return: The decoded domain
-        """
-        #example we want to extract google.com
-        real_domain = ""
-        domain_bytes = domain.encode()
-
-        #We extract the first part "google"
-        length_1 = domain_bytes[0]
-        for i in range(1, length_1 + 1):
-            real_domain += chr(domain_bytes[i])
-
-
-        real_domain += "."#"google.""
-
-        #We extract the second part "com"
-        i = length_1 + 1
-        length_2 = domain_bytes[i]
-        for j in range(1, length_2 + 1):
-            real_domain += chr(domain_bytes[i + j])
-        #google.com
-        
     
-        return real_domain
-
     #Methods to generate headers
     def __dns_header(self,transaction_id:bytes,found:bool, ancount: int)->bytes:
         """
@@ -141,20 +116,20 @@ class Server:
         #We generate the ID
         dns_id=transaction_id
             #We generate the flag header
-        flags = self.generate_flags(found)
+        flags = self.__generate_flags(found)
 
         #We generate the other headers
-        qdcount=self.int_to_bytes(1,2)#number of entries in question section
+        qdcount=self.__int_to_bytes(1,2)#number of entries in question section
         #Based on message type
-        ancount=self.int_to_bytes(ancount,2)#number of resource records in answer section
+        ancount=self.__int_to_bytes(ancount,2)#number of resource records in answer section
 
-        nscount=self.int_to_bytes(0,2)#number of name server resource records in authorative records
+        nscount=self.__int_to_bytes(0,2)#number of name server resource records in authorative records
         
-        arcount=self.int_to_bytes(0,2)#number of resource records additional record section
+        arcount=self.__int_to_bytes(0,2)#number of resource records additional record section
 
         return dns_id+flags+qdcount+ancount+nscount+arcount
 
-    def generate_flags(self,found:bool)->bytes:
+    def __generate_flags(self,found:bool)->bytes:
         """
         We generate the flag header
         """
@@ -175,45 +150,137 @@ class Server:
         flags=qr+opcode+aa+tc+rd+ra+z+rcode
 
         #We convert it to bytes and we return it
-        return self.bits_to_bytes(flags)
+        return self.__bits_to_bytes(flags)
     
     def __generate_answer_section(self,domain)->bytes:
         """
         Method is in charge of creating the answer header
         @return: Returns bytes if there is a domain found else it returns None
         """
-        aux = self.find_domain(domain)
-        if aux==None:
-            return
+
+        #We first search if the domain asked exist in our database
+        domain_record_dict = self.__find_domain_from_database(domain)
+
+        #If is none it means we didn't find the question domain
+        if domain_record_dict==None:
+            return b""
         
-
+        #We prepare the answer
         answer=b""
-        list_ip=aux.get("IP")
-        for ip in list_ip:
-            name =self.int_to_bytes(192,1) + self.int_to_bytes(12,1) #c0 0c (hex)=204(dec)
-            type_= aux.get("Type")
-            type_code=b""
-            if type_=="A":
-                type_code=self.int_to_bytes(1,2)#1=type A
-            else:
-                raise ValueError("[ERROR] we only accept type A for this lab")
-            class_= aux.get("Class")
-            if class_=="IN":
-                class_=self.int_to_bytes(1,2)#1=class IN(internet)
+        #We get the list of ip
+        ipv4_list=domain_record_dict.get("IP")
 
-            ttl= self.int_to_bytes(aux.get("TTL"),4)#Time to live
 
-            rdlength=self.int_to_bytes(4,2) # As ip always has 32 bits
+        #Now we will iterate the different ipv4 that are on domain_record_dict
+        for ipv4 in ipv4_list:
+
+            #name of the node (for this lab we have a fixed name of node=c0 0c)
+            name =self.__int_to_bytes(192,1) + self.__int_to_bytes(12,1) #c0 0c (hex)=204(dec)
+
+            #We obtain the conversion from 
+            type_code = self.__str_type_code_to_bytes(domain_record_dict.get("Type"))
+
+            #We obtain the class of the ipv4
+            class_ = self.__str_class_to_bytes(domain_record_dict.get("Class"))
+
+            #We obtain the ttl of the ipv4
+            ttl= self.__int_to_bytes(domain_record_dict.get("TTL"),4)#Time to live
+
+            #We obtain the rdlength (we allways now is 4, since is ipv4)
+            rdlength=self.__int_to_bytes(4,2)
             
-            rdata=b""
-            for i in ip.split("."):
-                rdata+=self.int_to_bytes(int(i),1)
+            #We obtain the ipv4
+            rdata = self.__ipv4_to_bytes(ipv4)
+
+            #we obtain the ith answer 
             answer += name+type_code+class_+ttl+rdlength+rdata
 
-            
         return answer
+
+    def __generate_dns_question(self, question_dict:list)->bytes:
+        """
+        Obtain the question section format into bytes
+        @question_dict: Here we have a list of dictionaries containing the questiosn of the client
+        @return: It returns the translation of the question into bytes
+        """
+        
+        prev_question_query=b""
+        for question in question_dict:
+            
+            #we obtain qname
+            qname=self.__domain_to_bytes(question["qname"])
+
+            #In this lab we know it has fixed values
+            qtype=self.__int_to_bytes(1,2)
+            qclass=self.__int_to_bytes(1,2)
+
+            #We create a question query
+            prev_question_query+=qname+qtype+qclass
+
+        return prev_question_query
+
     
-    def find_domain(self,domain)->dict:
+    #Method to extract data of a request or to find information
+    def __extract_data(self,hex_data:hex)->dict:
+        """
+        Method of extracting the data from the server
+        @hex_data: All the data of the response in hex
+        @return dict: It return a dictionary with all the fields
+        """
+        #General data of the response
+        data={
+            "id_req":hex_data[:4],
+            "flags_req":hex_data[4:8],
+            "qdcount":hex_data[8:12],
+            "ancount":hex_data[12:16],
+            "nscount":hex_data[16:20],
+            "arcount":hex_data[20:24],
+            "question":[],
+            "answers":[]
+        }
+        i=24
+        #We extract the query data
+        qdcount=int(data["qdcount"],16)
+        for _ in range(qdcount):
+            domain,qtype,qclass,i=self.__extract_query(hex_data,i)
+            data["question"].append({
+                "qname":domain,
+                "qtype":qtype,
+                "qclass":qclass
+            })
+        
+        return data
+
+    def __extract_query(self, hex_data: hex, i: int) -> [str, hex, hex, int]:
+        """
+        This method is in charge of finding the fields of the query
+        @hex_data: the response in hex
+        @i: integer that represents the position in hex_data
+        @return: returns the domain, qtype, qclass, and the position in hex_data
+        """
+
+        #obtain the first part of the domain length (*2 because they are hex not bytes)
+        length_first_part=self.__hex_to_int(hex_data[i:i+2])*2
+        i+=2
+        first_domain=self.__hex_to_str(hex_data[i:i+length_first_part])
+        i+=length_first_part
+
+        #We obtain the second part (*2 because they are hex not bytes)
+        length_second_part=self.__hex_to_int(hex_data[i:i+2])*2
+        i+=2
+        second_domain=self.__hex_to_str(hex_data[i:i+length_second_part])
+        i+=length_second_part
+        
+        #We create the domain
+        domain=first_domain+"."+second_domain
+                                      
+
+        # Skip over the null terminator
+        i += 2
+
+        return domain, hex_data[i:i+2], hex_data[i+2:i+4],i
+
+    def __find_domain_from_database(self,domain)->dict:
         """
         This method is in charge of finding the domain and 
         returning the dictionary with the different values for that domain
@@ -226,32 +293,72 @@ class Server:
             print(f"[ERROR]: domain not found {error}")
             return 
 
+
+    #Methods to translate info
+    def __ipv4_to_bytes(self, ipv4:str)->bytes:
+        """
+        This method is in charge of changing an ip string into bytes
+        @ip: string containing an ip address
+        @return: It returns the conversion of an ipv4 to bytes
+        """
+        rdata=b""
+        #We iterate ipv4 without the "."
+        for i in ipv4.split("."):
+            rdata+=self.__int_to_bytes(int(i),1)
+        return rdata
     
-    #Method to extract data of a request
-    def extract_data_of_request(self,hex_data:hex)->dict:
+    def __str_class_to_bytes(self, class_str:str)->bytes:
         """
-        This method is in charge of extracting all the 
-        components of the request made by the client
-        @hex_data: the request in hexadecimals numbers
-        @return: a dictionary containing all components of the request
+        Method in charge of translating an str class into its equivalent code in bytes
+        @class_str: the class that we want to translate into bytes code
+        @return: We return the class into bytes
         """
+        if class_str=="IN":
+            class_=self.__int_to_bytes(1,2)#1=class IN(internet)
+        else:
+            raise ValueError("[ERROR] We only accept type IN for this lab")
+        return class_
 
-        dictionary={
-            "id_req":hex_data[:4],
-            "flags_req":hex_data[4:8],
-            "qdcount":hex_data[8:12],
-            "ancount":hex_data[12:16],
-            "nscount":hex_data[16:20],
-            "arcount":hex_data[20:24],
-            "qname":hex_data[24:-8],#We know it will always be -8
-            "qsection":hex_data[24:]
-        }
-        return dictionary
+    def __str_type_code_to_bytes(self, type_code_str:str)->bytes:
+        """
+        Method in charge of translating a string type code into bytes
+        @type_code_str: A string containing the type code (e.g A)
+        @return: It return the type code translated to bytes
+        """
+        type_code_bytes=b""
+        if type_code_str=="A":
+            type_code_bytes=self.__int_to_bytes(1,2)#1=type A
+        else:
+            raise ValueError("[ERROR] we only accept type A for this lab")
+        return type_code_bytes
+
+    def __domain_to_bytes(self,domain:str)->bytes:
+        """
+        Method to convert a string containing a domain into bytes
+        @domain: string containing the domain
+        @return: the domain converted into bytes
+        """
+        #Variables
+        qname = b"" # Initialize
+        domain_split = domain.split(".")
+
+        #We transform the domain into bytes
+        for part_domain in domain_split:
+            #obtain the length
+            qname_length=self.__int_to_bytes(len(part_domain),1)
+            #Obtain the part of domain 
+            part_domain_bytes=part_domain.encode()
+
+            qname += qname_length+part_domain_bytes
+
+        #End of domain
+        qname += self.__int_to_bytes(0,1) # End of domain
+        return qname
 
 
-    #static methods
+    #static methods to translate simple types into bytes or hex
     @staticmethod
-    def int_to_bytes(number:int,byte_size:int)->bytes:
+    def __int_to_bytes(number:int,byte_size:int)->bytes:
         """
         Method to convert an integer to bytes
         @number: The number we want to convert into bytes
@@ -262,7 +369,7 @@ class Server:
         return number.to_bytes(byte_size,byteorder="big")
     
     @staticmethod
-    def bits_to_bytes(bits:str)->bytes:
+    def __bits_to_bytes(bits:str)->bytes:
         """
         Method in charge of translating bits into bytes
         @bits: A string containing bits
@@ -278,7 +385,35 @@ class Server:
         return result_in_bytes
 
     @staticmethod
-    def print_hex(hex_number:hex)->None:
+    def __hex_to_bytes(hex_data:hex)->bytes:
+        """
+        Method to translate hex into bytes
+        @hex_data: data in hex to translate into bytes
+        @return: The translation of hex into bytes
+        """
+        return bytes.fromhex(hex_data)
+    
+    @staticmethod
+    def __hex_to_int(hex_data:hex)->int:
+        """
+        Convert a hexadecimal number to an integer
+        @hex_data: hexadecimal numbers that contain an integer
+        @return str: return te conversion from hex to in
+        """
+        return int(hex_data,16)
+
+    @staticmethod
+    def __hex_to_str(hex_data:hex)->str:
+        """
+        Method to convert a hexadecimal into a string
+        @hex_data: hexadecimal numbers that contain a string
+        @return str: return te conversion from hex to string
+        """
+
+        return bytes.fromhex(hex_data).decode('utf-8')
+
+    @staticmethod
+    def __print_hex(hex_number:hex)->None:
         """
         Method in charge of printing hex numbers
         @hex_data: The data we want to print
@@ -288,7 +423,6 @@ class Server:
             group = hex_number[i:i + 32]  # Toma 32 caracteres
             formatted_group = ' '.join(group[i:i+2] for i in range(0, 32, 2))  # Divide en pares de 2 y une con espacios
             print(formatted_group)
-        
 
 
 if __name__=="__main__":
