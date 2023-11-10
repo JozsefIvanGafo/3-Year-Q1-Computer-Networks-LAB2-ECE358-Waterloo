@@ -1,3 +1,10 @@
+"""
+University of Waterloo Fall 2023 ECE-358 LAB-2  Group 151
+József IVÁN GAFO (21111635) jivangaf@uwaterloo.ca
+Sonia NAVAS RUTETE (21111397) srutete@uwaterloo.ca
+V 1:0
+Description: In this module we will write the code for the server for the task 2 of lab 2
+"""
 #import
 from socket import *
 
