@@ -41,7 +41,7 @@
          - Using Python 3: `python3 client.py` or `py client.py`.
 
       4. In the client terminal, you will be asked to enter a domain:
-         - Domains found on the server are : "google.com," "youtube.com," "uwaterloo.ca," "wikipedia.org," and "amazon.ca."
+         - Domains found on the server are : "google.com", "youtube.com", "uwaterloo.ca", "wikipedia.org", and "amazon.ca."
          - If other domains are entered, the client will not receive any answer and will get the RCODE "0011."
 
       5. The client terminal will print the related IPv4 to your domain; if not found, it will print an error message saying it didn't find the related IPv4.
