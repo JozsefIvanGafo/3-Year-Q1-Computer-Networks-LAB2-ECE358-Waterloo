@@ -44,12 +44,6 @@ class Client:
 
             #If there are no errors
             self.print_response(response_dict)
-            #TODO previous code
-            """if data["flags_req"][2:]=="03":
-                domain=data["question"][0]["qname"]
-                print(f"[ERROR]: the DNS {domain} was not found")
-            else:
-                self.print_response(response)"""
             print("")
 
     
@@ -222,7 +216,6 @@ class Client:
 
 
     #Methods to print the output
-    #TODO: def print_response(self,response:bytes)->None:
     def print_response(self,response:dict)->None:
         """
         Method to print the response from the server
@@ -232,20 +225,15 @@ class Client:
         if response["flags_req"][2:]=="03":
             domain=response["question"][0]["qname"]
             print(f"[ERROR]: the DNS {domain} was not found")
-
-
-
-
         line=""
 
         #We obtain the domain from all the data extracted
         domain=response["question"][0]["qname"]
-        
 
         answer_list=response["answers"]
         for answer in answer_list:
             #We create the print message
-            line=""
+            line=">"
             line+=domain+": "
 
             #Get answer type
@@ -268,7 +256,7 @@ class Client:
             rdlength=self.hex_to_int(answer["rd_length"])
 
             if rdlength==4:
-                line+="addr("+str(rdlength)+")"
+                line+="addr ("+str(rdlength)+") "
             else:
                 raise ValueError("[ERROR] The client only support ipv4")
 
@@ -277,52 +265,6 @@ class Client:
             line+=ipv4
             #Print the answer
             print(line)
-
-        #TODO: antiguo codigo
-        """# Domain name
-        x = response[12]
-        domain = response[13:13+x].decode()
-        x2 = response[13+x]
-        domain += "." + response[14+x:14+x+x2].decode() + ": "
-        i = 14+x+x2
-
-        
-        while response[i:i+1] != b'\xc0':
-            i += 1
-
-        final_part = response[i:]
-        line = ""
-        for x in range(0, len(final_part), 16):
-            line += domain
-            line += "type "
-            aux = 2
-
-            if(int.from_bytes(final_part[x+aux:x+aux+2], byteorder="big") == 1):
-                line += "A, "
-            #TODO: ERROR que hacemos?
-            line += "class "
-            aux +=2
-            if(int.from_bytes(final_part[x+aux:x+aux+2], byteorder="big")):
-                line += "IN, "
-            aux +=2
-
-            line += "TTL "
-            line += str(int.from_bytes(final_part[x+aux:x+aux+4],byteorder="big"))
-            aux +=4
-
-
-            line += ", addr ("
-            line += str(int.from_bytes(final_part[x+aux:x+aux+2],byteorder="big"))
-            line += ")"
-            aux+=2
-
-            for i in range(4):
-                line += str(final_part[x+aux])
-                if i != 3:
-                    line += "."
-                aux +=1
-            line += "\n"
-        print(line)"""
 
     #static methods
     @staticmethod

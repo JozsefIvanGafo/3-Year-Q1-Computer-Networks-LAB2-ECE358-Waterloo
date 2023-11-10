@@ -25,6 +25,21 @@ class WebServer:
         print("The server is ready to receive")
 
         #Here we have the content when we don't find the requested file
+        #TODO: FINISH THIS
+        self._error_file_content="""\r\n
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">\r\n
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">\r\n
+            <title>Document</title>\r\n
+        </head>
+        <body>\r\n
+            <h1>404 Not found</h1>\r\n
+        </body>
+        </html>\r\n
+        """
+
         self._error_file_path=os.getcwd()+"/404_not_found.html"
         try:
             with open(self._error_file_path, "rb") as file:
