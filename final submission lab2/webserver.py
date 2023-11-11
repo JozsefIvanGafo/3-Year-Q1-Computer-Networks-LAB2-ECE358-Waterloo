@@ -25,8 +25,7 @@ class WebServer:
         print("The server is ready to receive")
 
         #Here we have the content when we don't find the requested file
-        #TODO: FINISH THIS
-        self._error_file_content="""\r\n
+        self._error_file_content="""
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -37,15 +36,8 @@ class WebServer:
         <body>\r\n
             <h1>404 Not found</h1>\r\n
         </body>
-        </html>\r\n
+        </html>
         """
-
-        self._error_file_path=os.getcwd()+"/404_not_found.html"
-        try:
-            with open(self._error_file_path, "rb") as file:
-                    self._error_file_content = file.read()
-        except FileNotFoundError as error:
-            print(f"[ERROR] An exception occurred: {error}")
 
 
     def initialization(self):
@@ -81,13 +73,13 @@ class WebServer:
                 with open(file_path, "rb") as file:
                     file_content = file.read()
                     #We create the headers+data for the http response
-                    response=self.__http_response(type_request,file_path,file_content,"200 OK")
+                    response=self.__http_response(type_request,file_content,"200 OK",file_path)
 
             #If we didn't find the file we send http error response
             except FileNotFoundError:
                 print("[ERROR] File not found")
-                #response=self.__http_error_response()
-                response=self.__http_response(type_request,self._error_file_path,self._error_file_content,"404 Not Found")
+                
+                response=self.__http_response(type_request,self._error_file_content.encode(),"404 Not Found", "ERROR")
 
             #If we encounter another type of error
             except Exception as error:
@@ -105,7 +97,7 @@ class WebServer:
 
     
     #Methods to generate the response of the web server
-    def __http_response(self,type_request:str,file_path:str,file_content:bytes,status_code:str)->str:
+    def __http_response(self,type_request:str,file_content:bytes,status_code:str, file_path:str)->str:
         """
         Description: This method is in charge of returning the response of the http request
         @type_request: The type of request the user is requesting (HEAD or GET)
@@ -118,7 +110,10 @@ class WebServer:
         connection=self.__get_connection_header()
         date=self.__get_date_header()
         server=self.__get_server_header()
-        last_mod=self.__get_last_mod_date_header(file_path)
+        if(file_path=="ERROR"):
+            last_mod=""
+        else:
+            last_mod=self.__get_last_mod_date_header(file_path)
         content_type=self.__get_content_type_header()
         if type_request=="HEAD":
             content_length=self.__get_content_length_header(b"")
