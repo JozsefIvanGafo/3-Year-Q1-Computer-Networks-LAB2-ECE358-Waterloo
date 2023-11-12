@@ -106,15 +106,18 @@ class WebServer:
         @status_code: is a string containing the status code of the response
         @return: It returns the response with all the headers and possible data
         """
+        #We obtain the different headers
         status="HTTP/1.1 "+status_code+"\r\n"
         connection=self.__get_connection_header()
         date=self.__get_date_header()
         server=self.__get_server_header()
+        #If is an error we don't want to send the last modification date
         if(file_path=="ERROR"):
             last_mod=""
         else:
             last_mod=self.__get_last_mod_date_header(file_path)
         content_type=self.__get_content_type_header()
+        #Depending if is a head or 
         if type_request=="HEAD":
             content_length=self.__get_content_length_header(b"")
         else:
